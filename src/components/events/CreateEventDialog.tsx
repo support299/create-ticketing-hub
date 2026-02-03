@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -6,6 +5,7 @@ import { Calendar, Clock, MapPin, Image, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import {
   Dialog,
   DialogContent,
@@ -26,11 +26,16 @@ import { Event } from '@/types';
 const eventSchema = z.object({
   title: z.string().min(1, 'Title is required').max(100),
   venue: z.string().min(1, 'Venue is required').max(200),
-  date: z.string().min(1, 'Date is required'),
+  date: z.string().min(1, 'Start date is required'),
+  endDate: z.string().min(1, 'End date is required'),
   time: z.string().min(1, 'Time is required'),
   description: z.string().min(1, 'Description is required').max(500),
   coverImage: z.string().url('Must be a valid URL').or(z.literal('')),
   capacity: z.coerce.number().min(1, 'Capacity must be at least 1'),
+  isActive: z.boolean(),
+}).refine((data) => new Date(data.endDate) >= new Date(data.date), {
+  message: "End date must be after or equal to start date",
+  path: ["endDate"],
 });
 
 type EventFormValues = z.infer<typeof eventSchema>;
@@ -48,10 +53,12 @@ export function CreateEventDialog({ open, onOpenChange, onEventCreated }: Create
       title: '',
       venue: '',
       date: '',
+      endDate: '',
       time: '',
       description: '',
       coverImage: '',
       capacity: 100,
+      isActive: true,
     },
   });
 
@@ -61,10 +68,14 @@ export function CreateEventDialog({ open, onOpenChange, onEventCreated }: Create
       title: data.title,
       venue: data.venue,
       date: data.date,
+      endDate: data.endDate,
       time: data.time,
       description: data.description,
       coverImage: data.coverImage || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=400&fit=crop',
       capacity: data.capacity,
+      isActive: data.isActive,
+      ticketsSold: 0,
+      ticketPrice: 0,
     };
 
     onEventCreated(newEvent);
@@ -77,7 +88,7 @@ export function CreateEventDialog({ open, onOpenChange, onEventCreated }: Create
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">Create New Event</DialogTitle>
         </DialogHeader>
@@ -121,7 +132,7 @@ export function CreateEventDialog({ open, onOpenChange, onEventCreated }: Create
                 name="date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Date</FormLabel>
+                    <FormLabel>Start Date</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -135,14 +146,14 @@ export function CreateEventDialog({ open, onOpenChange, onEventCreated }: Create
 
               <FormField
                 control={form.control}
-                name="time"
+                name="endDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Time</FormLabel>
+                    <FormLabel>End Date</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input type="time" className="pl-9" {...field} />
+                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input type="date" className="pl-9" {...field} />
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -150,6 +161,23 @@ export function CreateEventDialog({ open, onOpenChange, onEventCreated }: Create
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="time"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Start Time</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input type="time" className="pl-9" {...field} />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
@@ -200,6 +228,27 @@ export function CreateEventDialog({ open, onOpenChange, onEventCreated }: Create
                     </div>
                   </FormControl>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="isActive"
+              render={({ field }) => (
+                <FormItem className="flex items-center justify-between rounded-lg border border-border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel className="text-base">Active Event</FormLabel>
+                    <p className="text-sm text-muted-foreground">
+                      Active events are visible and open for registration
+                    </p>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
                 </FormItem>
               )}
             />

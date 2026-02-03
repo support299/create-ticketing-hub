@@ -3,12 +3,14 @@ export interface Event {
   title: string;
   venue: string;
   date: string;
+  endDate: string;
   time: string;
   description: string;
   coverImage: string;
   capacity: number;
   ticketsSold?: number;
   ticketPrice?: number;
+  isActive: boolean;
 }
 
 export interface Contact {

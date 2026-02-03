@@ -1,14 +1,18 @@
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Calendar, MapPin, Clock, Users, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Clock, Users, Edit, Trash2, Power } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
-import { getEventById, mockAttendees, mockContacts } from '@/data/mockData';
+import { getEventById, mockAttendees, mockContacts, checkInAttendee } from '@/data/mockData';
 import { format } from 'date-fns';
 import { AttendeesTable } from '@/components/attendees/AttendeesTable';
+import { cn } from '@/lib/utils';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 export default function EventDetail() {
   const { id } = useParams();
   const event = getEventById(id || '');
+  const [, forceUpdate] = useState(0);
 
   // Get attendees for this event
   const eventAttendees = mockAttendees
@@ -18,6 +22,15 @@ export default function EventDetail() {
       contact: mockContacts.find(c => c.id === a.contactId)!,
     }))
     .filter(a => a.contact);
+
+  const handleCheckIn = (attendeeId: string) => {
+    const attendee = eventAttendees.find(a => a.id === attendeeId);
+    checkInAttendee(attendeeId);
+    toast.success('Checked in successfully!', {
+      description: `${attendee?.contact.name} has been checked in.`,
+    });
+    forceUpdate(n => n + 1);
+  };
 
   if (!event) {
     return (
@@ -34,6 +47,8 @@ export default function EventDetail() {
       </MainLayout>
     );
   }
+
+  const isMultiDay = event.date !== event.endDate;
 
   return (
     <MainLayout>
@@ -53,8 +68,18 @@ export default function EventDetail() {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
           <div className="absolute bottom-6 left-6 right-6">
-            <h1 className="text-3xl font-bold text-white font-display">{event.title}</h1>
-            <p className="text-white/80 mt-2 max-w-2xl">{event.description}</p>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold text-white font-display">{event.title}</h1>
+              <span className={cn(
+                'px-3 py-1 rounded-full text-xs font-medium',
+                event.isActive 
+                  ? 'bg-success/90 text-success-foreground' 
+                  : 'bg-muted/90 text-muted-foreground'
+              )}>
+                {event.isActive ? 'Active' : 'Inactive'}
+              </span>
+            </div>
+            <p className="text-white/80 max-w-2xl">{event.description}</p>
           </div>
           <div className="absolute top-4 right-4 flex gap-2">
             <Button size="sm" variant="secondary">
@@ -69,14 +94,23 @@ export default function EventDetail() {
         </div>
 
         {/* Event Info */}
-        <div className="grid gap-6 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
               <Calendar className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Date</p>
-              <p className="font-semibold">{format(new Date(event.date), 'MMMM d, yyyy')}</p>
+              <p className="text-xs text-muted-foreground">Start Date</p>
+              <p className="font-semibold">{format(new Date(event.date), 'MMM d, yyyy')}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <Calendar className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">End Date</p>
+              <p className="font-semibold">{format(new Date(event.endDate), 'MMM d, yyyy')}</p>
             </div>
           </div>
           <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-4">
@@ -115,7 +149,7 @@ export default function EventDetail() {
               <h3 className="text-lg font-semibold font-display">Attendees</h3>
               <p className="text-sm text-muted-foreground">{eventAttendees.length} registered attendees</p>
             </div>
-            <AttendeesTable attendees={eventAttendees} />
+            <AttendeesTable attendees={eventAttendees} onCheckIn={handleCheckIn} />
           </div>
         )}
       </div>

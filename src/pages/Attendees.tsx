@@ -1,26 +1,23 @@
-import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { AttendeesTable } from '@/components/attendees/AttendeesTable';
-import { getAttendeesWithContacts } from '@/data/mockData';
+import { getAttendeesWithContacts, checkInAttendee } from '@/data/mockData';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { toast } from 'sonner';
+import { useState } from 'react';
 
 export default function Attendees() {
-  const [attendees, setAttendees] = useState(getAttendeesWithContacts());
+  const [, forceUpdate] = useState(0);
+  
+  const attendees = getAttendeesWithContacts();
 
   const handleCheckIn = (attendeeId: string) => {
-    setAttendees(prev => 
-      prev.map(a => 
-        a.id === attendeeId 
-          ? { ...a, checkedInAt: new Date().toISOString() }
-          : a
-      )
-    );
     const attendee = attendees.find(a => a.id === attendeeId);
+    checkInAttendee(attendeeId);
     toast.success('Checked in successfully!', {
       description: `${attendee?.contact.name} has been checked in.`,
     });
+    forceUpdate(n => n + 1);
   };
 
   const checkedIn = attendees.filter(a => a.checkedInAt).length;
