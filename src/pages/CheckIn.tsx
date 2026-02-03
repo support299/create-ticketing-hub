@@ -155,11 +155,7 @@ export default function CheckIn() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Ticket Type</p>
-                        <p className="font-medium">{result.attendee.ticketTypeName}</p>
-                      </div>
+                    <div className="pt-4 border-t border-border">
                       <div>
                         <p className="text-xs text-muted-foreground">Event</p>
                         <p className="font-medium">{result.attendee.eventTitle}</p>

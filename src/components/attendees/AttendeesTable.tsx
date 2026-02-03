@@ -3,7 +3,6 @@ import { Attendee, Contact } from '@/types';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Check, QrCode, Mail } from 'lucide-react';
-import { format } from 'date-fns';
 import { toast } from 'sonner';
 import {
   Table,
@@ -43,7 +42,6 @@ export function AttendeesTable({ attendees, onCheckIn }: AttendeesTableProps) {
               <TableHead className="font-display">Ticket #</TableHead>
               <TableHead className="font-display">Attendee</TableHead>
               <TableHead className="font-display">Event</TableHead>
-              <TableHead className="font-display">Ticket Type</TableHead>
               <TableHead className="font-display">Status</TableHead>
               <TableHead className="font-display">Actions</TableHead>
             </TableRow>
@@ -59,7 +57,6 @@ export function AttendeesTable({ attendees, onCheckIn }: AttendeesTableProps) {
                   </div>
                 </TableCell>
                 <TableCell className="max-w-[200px] truncate">{attendee.eventTitle}</TableCell>
-                <TableCell>{attendee.ticketTypeName}</TableCell>
                 <TableCell>
                   <StatusBadge 
                     status={attendee.checkedInAt ? 'checked-in' : 'not-checked-in'} 

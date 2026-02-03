@@ -1,8 +1,8 @@
-import { DollarSign, Users, Ticket, TrendingUp, Calendar } from 'lucide-react';
+import { DollarSign, Users, Ticket, Calendar } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { StatCard } from '@/components/ui/stat-card';
 import { EventCard } from '@/components/events/EventCard';
-import { mockEvents, mockTicketTypes, mockSalesData, mockOrders, getTicketTypesByEventId } from '@/data/mockData';
+import { mockEvents, mockSalesData, mockOrders } from '@/data/mockData';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { format } from 'date-fns';
 
@@ -11,8 +11,8 @@ export default function Dashboard() {
     .filter(o => o.status === 'completed')
     .reduce((acc, o) => acc + o.total, 0);
   
-  const totalTicketsSold = mockTicketTypes.reduce((acc, t) => acc + t.sold, 0);
-  const totalCapacity = mockTicketTypes.reduce((acc, t) => acc + t.quantity, 0);
+  const totalTicketsSold = mockEvents.reduce((acc, e) => acc + (e.ticketsSold || 0), 0);
+  const totalCapacity = mockEvents.reduce((acc, e) => acc + e.capacity, 0);
 
   return (
     <MainLayout>
@@ -149,7 +149,6 @@ export default function Dashboard() {
               <EventCard 
                 key={event.id} 
                 event={event} 
-                ticketTypes={getTicketTypesByEventId(event.id)} 
               />
             ))}
           </div>

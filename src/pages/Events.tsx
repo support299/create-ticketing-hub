@@ -4,7 +4,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { EventCard } from '@/components/events/EventCard';
 import { CreateEventDialog } from '@/components/events/CreateEventDialog';
 import { Button } from '@/components/ui/button';
-import { mockEvents as initialEvents, mockTicketTypes, getTicketTypesByEventId } from '@/data/mockData';
+import { mockEvents as initialEvents } from '@/data/mockData';
 import { Event } from '@/types';
 
 export default function Events() {
@@ -38,10 +38,7 @@ export default function Events() {
               className="animate-slide-up"
               style={{ animationDelay: `${index * 100}ms` }}
             >
-              <EventCard 
-                event={event} 
-                ticketTypes={getTicketTypesByEventId(event.id)} 
-              />
+              <EventCard event={event} />
             </div>
           ))}
         </div>
