@@ -2,6 +2,7 @@ import { Calendar, MapPin, Users, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Event } from '@/types';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface EventCardProps {
   event: Event;
@@ -11,6 +12,7 @@ export function EventCard({ event }: EventCardProps) {
   const ticketsSold = event.ticketsSold || 0;
   const revenue = ticketsSold * (event.ticketPrice || 0);
   const soldPercentage = event.capacity > 0 ? Math.round((ticketsSold / event.capacity) * 100) : 0;
+  const isMultiDay = event.date !== event.endDate;
 
   return (
     <Link
@@ -28,6 +30,17 @@ export function EventCard({ event }: EventCardProps) {
         <div className="absolute bottom-4 left-4 right-4">
           <h3 className="text-xl font-bold text-white font-display">{event.title}</h3>
         </div>
+        {/* Status Badge */}
+        <div className="absolute top-3 right-3">
+          <span className={cn(
+            'px-3 py-1 rounded-full text-xs font-medium',
+            event.isActive 
+              ? 'bg-success/90 text-success-foreground' 
+              : 'bg-muted/90 text-muted-foreground'
+          )}>
+            {event.isActive ? 'Active' : 'Inactive'}
+          </span>
+        </div>
       </div>
 
       {/* Content */}
@@ -35,7 +48,10 @@ export function EventCard({ event }: EventCardProps) {
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Calendar className="h-4 w-4 text-primary" />
-            <span>{format(new Date(event.date), 'MMM d, yyyy')}</span>
+            <span>
+              {format(new Date(event.date), 'MMM d')}
+              {isMultiDay && ` - ${format(new Date(event.endDate), 'MMM d')}`}
+            </span>
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <Clock className="h-4 w-4 text-primary" />

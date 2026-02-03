@@ -6,36 +6,42 @@ export const mockEvents: Event[] = [
     title: 'Indie Music Night',
     venue: 'The Basement Club',
     date: '2024-03-15',
+    endDate: '2024-03-15',
     time: '20:00',
     description: 'An intimate evening featuring emerging indie artists from the local scene. Enjoy craft cocktails and discover your new favorite band.',
     coverImage: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=800&h=400&fit=crop',
     capacity: 150,
     ticketsSold: 109,
     ticketPrice: 25,
+    isActive: true,
   },
   {
     id: '2',
     title: 'Creator Meetup: NYC',
     venue: 'WeWork Bryant Park',
     date: '2024-03-20',
+    endDate: '2024-03-20',
     time: '18:30',
     description: 'Connect with fellow content creators, share insights, and build meaningful relationships in this monthly networking event.',
     coverImage: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=400&fit=crop',
     capacity: 80,
     ticketsSold: 45,
     ticketPrice: 0,
+    isActive: true,
   },
   {
     id: '3',
     title: 'Stand-up Comedy Showcase',
     venue: 'Laughs Comedy Club',
     date: '2024-03-25',
+    endDate: '2024-03-25',
     time: '21:00',
     description: 'Five hilarious comedians take the stage for a night of non-stop laughter. Ages 18+ only.',
     coverImage: 'https://images.unsplash.com/photo-1585699324551-f6c309eedeca?w=800&h=400&fit=crop',
     capacity: 200,
     ticketsSold: 107,
     ticketPrice: 20,
+    isActive: false,
   },
 ];
 
@@ -56,7 +62,8 @@ export const mockOrders: Order[] = [
   { id: 'ORD-006', eventId: '3', contactId: '1', total: 40, status: 'cancelled', createdAt: '2024-02-23T13:20:00Z', quantity: 1 },
 ];
 
-export const mockAttendees: Attendee[] = [
+// Mutable attendees array for check-in state
+export let mockAttendees: Attendee[] = [
   { id: '1', orderId: 'ORD-001', contactId: '1', ticketNumber: 'TKT-001-A', qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TKT-001-A', checkedInAt: null, eventTitle: 'Indie Music Night' },
   { id: '2', orderId: 'ORD-001', contactId: '1', ticketNumber: 'TKT-001-B', qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TKT-001-B', checkedInAt: '2024-03-15T19:45:00Z', eventTitle: 'Indie Music Night' },
   { id: '3', orderId: 'ORD-002', contactId: '2', ticketNumber: 'TKT-002-A', qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TKT-002-A', checkedInAt: null, eventTitle: 'Indie Music Night' },
@@ -96,3 +103,12 @@ export const getAttendeesWithContacts = (): (Attendee & { contact: Contact })[] 
     ...attendee,
     contact: getContactById(attendee.contactId)!,
   })).filter(a => a.contact);
+
+// Helper to check in an attendee - modifies the shared state
+export const checkInAttendee = (attendeeId: string): void => {
+  mockAttendees = mockAttendees.map(a => 
+    a.id === attendeeId 
+      ? { ...a, checkedInAt: new Date().toISOString() }
+      : a
+  );
+};

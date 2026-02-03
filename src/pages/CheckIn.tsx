@@ -3,20 +3,21 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { QrCode, Check, X, Search, User, Ticket } from 'lucide-react';
-import { mockAttendees, mockContacts } from '@/data/mockData';
+import { mockAttendees, mockContacts, checkInAttendee } from '@/data/mockData';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { Attendee, Contact } from '@/types';
 
 interface CheckInResult {
   success: boolean;
-  attendee?: typeof mockAttendees[0] & { contact: typeof mockContacts[0] };
+  attendee?: Attendee & { contact: Contact };
   message: string;
 }
 
 export default function CheckIn() {
   const [ticketNumber, setTicketNumber] = useState('');
   const [result, setResult] = useState<CheckInResult | null>(null);
-  const [checkedInIds, setCheckedInIds] = useState<Set<string>>(new Set());
+  const [, forceUpdate] = useState(0);
 
   const handleSearch = () => {
     if (!ticketNumber.trim()) {
@@ -45,7 +46,7 @@ export default function CheckIn() {
       return;
     }
 
-    const isAlreadyCheckedIn = attendee.checkedInAt || checkedInIds.has(attendee.id);
+    const isAlreadyCheckedIn = !!attendee.checkedInAt;
 
     setResult({
       success: !isAlreadyCheckedIn,
@@ -58,12 +59,13 @@ export default function CheckIn() {
 
   const handleCheckIn = () => {
     if (result?.attendee) {
-      setCheckedInIds(prev => new Set([...prev, result.attendee!.id]));
+      checkInAttendee(result.attendee.id);
       toast.success('Check-in complete!', {
         description: `${result.attendee.contact.name} has been checked in.`,
       });
       setResult(null);
       setTicketNumber('');
+      forceUpdate(n => n + 1);
     }
   };
 
