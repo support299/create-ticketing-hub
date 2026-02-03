@@ -4,16 +4,12 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { EventCard } from '@/components/events/EventCard';
 import { CreateEventDialog } from '@/components/events/CreateEventDialog';
 import { Button } from '@/components/ui/button';
-import { mockEvents as initialEvents } from '@/data/mockData';
-import { Event } from '@/types';
+import { useEvents } from '@/hooks/useEvents';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Events() {
-  const [events, setEvents] = useState<Event[]>(initialEvents);
+  const { data: events = [], isLoading } = useEvents();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-
-  const handleEventCreated = (newEvent: Event) => {
-    setEvents(prev => [newEvent, ...prev]);
-  };
 
   return (
     <MainLayout>
@@ -31,23 +27,34 @@ export default function Events() {
         </div>
 
         {/* Events Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {events.map((event, index) => (
-            <div
-              key={event.id}
-              className="animate-slide-up"
-              style={{ animationDelay: `${index * 100}ms` }}
-            >
-              <EventCard event={event} />
-            </div>
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-[300px] rounded-2xl" />
+            ))}
+          </div>
+        ) : events.length === 0 ? (
+          <div className="text-center py-12 rounded-2xl border border-dashed border-border">
+            <p className="text-muted-foreground">No events yet. Create your first event!</p>
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {events.map((event, index) => (
+              <div
+                key={event.id}
+                className="animate-slide-up"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <EventCard event={event} />
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Create Event Dialog */}
         <CreateEventDialog 
           open={isCreateDialogOpen} 
           onOpenChange={setIsCreateDialogOpen}
-          onEventCreated={handleEventCreated}
         />
       </div>
     </MainLayout>

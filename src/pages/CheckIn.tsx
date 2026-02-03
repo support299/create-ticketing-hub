@@ -3,7 +3,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { QrCode, Check, X, Search, User, Ticket } from 'lucide-react';
-import { mockAttendees, mockContacts, checkInAttendee } from '@/data/mockData';
+import { useFindAttendeeByTicket, useCheckInAttendee } from '@/hooks/useAttendees';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Attendee, Contact } from '@/types';
@@ -17,55 +17,59 @@ interface CheckInResult {
 export default function CheckIn() {
   const [ticketNumber, setTicketNumber] = useState('');
   const [result, setResult] = useState<CheckInResult | null>(null);
-  const [, forceUpdate] = useState(0);
+  
+  const findAttendee = useFindAttendeeByTicket();
+  const checkInMutation = useCheckInAttendee();
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (!ticketNumber.trim()) {
       toast.error('Please enter a ticket number');
       return;
     }
 
-    const attendee = mockAttendees.find(
-      a => a.ticketNumber.toLowerCase() === ticketNumber.toLowerCase()
-    );
+    findAttendee.mutate(ticketNumber, {
+      onSuccess: (attendee) => {
+        if (!attendee) {
+          setResult({
+            success: false,
+            message: 'Ticket not found. Please verify the ticket number.',
+          });
+          return;
+        }
 
-    if (!attendee) {
-      setResult({
-        success: false,
-        message: 'Ticket not found. Please verify the ticket number.',
-      });
-      return;
-    }
+        const isAlreadyCheckedIn = !!attendee.checkedInAt;
 
-    const contact = mockContacts.find(c => c.id === attendee.contactId);
-    if (!contact) {
-      setResult({
-        success: false,
-        message: 'Contact information not found.',
-      });
-      return;
-    }
-
-    const isAlreadyCheckedIn = !!attendee.checkedInAt;
-
-    setResult({
-      success: !isAlreadyCheckedIn,
-      attendee: { ...attendee, contact },
-      message: isAlreadyCheckedIn 
-        ? 'This ticket has already been used for check-in.'
-        : 'Ticket verified successfully!',
+        setResult({
+          success: !isAlreadyCheckedIn,
+          attendee,
+          message: isAlreadyCheckedIn 
+            ? 'This ticket has already been used for check-in.'
+            : 'Ticket verified successfully!',
+        });
+      },
+      onError: () => {
+        setResult({
+          success: false,
+          message: 'Error searching for ticket. Please try again.',
+        });
+      },
     });
   };
 
   const handleCheckIn = () => {
     if (result?.attendee) {
-      checkInAttendee(result.attendee.id);
-      toast.success('Check-in complete!', {
-        description: `${result.attendee.contact.name} has been checked in.`,
+      checkInMutation.mutate(result.attendee.id, {
+        onSuccess: () => {
+          toast.success('Check-in complete!', {
+            description: `${result.attendee!.contact.name} has been checked in.`,
+          });
+          setResult(null);
+          setTicketNumber('');
+        },
+        onError: () => {
+          toast.error('Failed to check in');
+        },
       });
-      setResult(null);
-      setTicketNumber('');
-      forceUpdate(n => n + 1);
     }
   };
 
@@ -104,9 +108,10 @@ export default function CheckIn() {
             />
             <Button
               onClick={handleSearch}
+              disabled={findAttendee.isPending}
               className="absolute right-2 top-1/2 -translate-y-1/2 gradient-primary"
             >
-              Search
+              {findAttendee.isPending ? 'Searching...' : 'Search'}
             </Button>
           </div>
         </div>
@@ -175,11 +180,12 @@ export default function CheckIn() {
                   {result.success && (
                     <Button
                       onClick={handleCheckIn}
+                      disabled={checkInMutation.isPending}
                       size="lg"
                       className="w-full gradient-primary glow-primary h-14 text-lg"
                     >
                       <Check className="h-5 w-5 mr-2" />
-                      Confirm Check-In
+                      {checkInMutation.isPending ? 'Checking in...' : 'Confirm Check-In'}
                     </Button>
                   )}
                 </div>

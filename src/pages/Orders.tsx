@@ -1,11 +1,28 @@
 import { MainLayout } from '@/components/layout/MainLayout';
 import { OrdersTable } from '@/components/orders/OrdersTable';
-import { getOrdersWithContacts } from '@/data/mockData';
+import { useOrders } from '@/hooks/useOrders';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Orders() {
-  const orders = getOrdersWithContacts();
+  const { data: orders = [], isLoading } = useOrders();
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="space-y-8">
+          <Skeleton className="h-10 w-48" />
+          <div className="grid gap-4 md:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-20 rounded-xl" />
+            ))}
+          </div>
+          <Skeleton className="h-[400px] rounded-xl" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -52,7 +69,13 @@ export default function Orders() {
         </div>
 
         {/* Orders Table */}
-        <OrdersTable orders={orders} />
+        {orders.length === 0 ? (
+          <div className="text-center py-12 rounded-2xl border border-dashed border-border">
+            <p className="text-muted-foreground">No orders yet.</p>
+          </div>
+        ) : (
+          <OrdersTable orders={orders} />
+        )}
       </div>
     </MainLayout>
   );

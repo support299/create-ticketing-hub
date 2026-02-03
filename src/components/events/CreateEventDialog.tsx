@@ -21,7 +21,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { toast } from 'sonner';
-import { Event } from '@/types';
+import { useCreateEvent } from '@/hooks/useEvents';
 
 const eventSchema = z.object({
   title: z.string().min(1, 'Title is required').max(100),
@@ -43,10 +43,11 @@ type EventFormValues = z.infer<typeof eventSchema>;
 interface CreateEventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onEventCreated: (event: Event) => void;
 }
 
-export function CreateEventDialog({ open, onOpenChange, onEventCreated }: CreateEventDialogProps) {
+export function CreateEventDialog({ open, onOpenChange }: CreateEventDialogProps) {
+  const createEvent = useCreateEvent();
+  
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
     defaultValues: {
@@ -63,8 +64,7 @@ export function CreateEventDialog({ open, onOpenChange, onEventCreated }: Create
   });
 
   const onSubmit = (data: EventFormValues) => {
-    const newEvent: Event = {
-      id: crypto.randomUUID(),
+    createEvent.mutate({
       title: data.title,
       venue: data.venue,
       date: data.date,
@@ -76,14 +76,18 @@ export function CreateEventDialog({ open, onOpenChange, onEventCreated }: Create
       isActive: data.isActive,
       ticketsSold: 0,
       ticketPrice: 0,
-    };
-
-    onEventCreated(newEvent);
-    toast.success('Event created successfully!', {
-      description: `"${data.title}" has been added to your events.`,
+    }, {
+      onSuccess: () => {
+        toast.success('Event created successfully!', {
+          description: `"${data.title}" has been added to your events.`,
+        });
+        form.reset();
+        onOpenChange(false);
+      },
+      onError: () => {
+        toast.error('Failed to create event');
+      },
     });
-    form.reset();
-    onOpenChange(false);
   };
 
   return (
@@ -257,8 +261,8 @@ export function CreateEventDialog({ open, onOpenChange, onEventCreated }: Create
               <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="flex-1 gradient-primary">
-                Create Event
+              <Button type="submit" disabled={createEvent.isPending} className="flex-1 gradient-primary">
+                {createEvent.isPending ? 'Creating...' : 'Create Event'}
               </Button>
             </div>
           </form>
