@@ -1,4 +1,5 @@
-import { Calendar, MapPin, Users, Clock } from 'lucide-react';
+import { Calendar, MapPin, Users, Clock, Copy, Check } from 'lucide-react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Event } from '@/types';
 import { format } from 'date-fns';
@@ -9,10 +10,19 @@ interface EventCardProps {
 }
 
 export function EventCard({ event }: EventCardProps) {
+  const [copied, setCopied] = useState(false);
   const ticketsSold = event.ticketsSold || 0;
   const revenue = ticketsSold * (event.ticketPrice || 0);
   const soldPercentage = event.capacity > 0 ? Math.round((ticketsSold / event.capacity) * 100) : 0;
   const isMultiDay = event.date !== event.endDate;
+
+  const copyEventId = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigator.clipboard.writeText(event.id);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <Link
@@ -85,6 +95,20 @@ export function EventCard({ event }: EventCardProps) {
             style={{ width: `${soldPercentage}%` }}
           />
         </div>
+
+        {/* Event ID */}
+        <button
+          onClick={copyEventId}
+          className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors text-left"
+        >
+          <span className="text-xs text-muted-foreground">ID:</span>
+          <code className="text-xs font-mono text-foreground flex-1 truncate">{event.id}</code>
+          {copied ? (
+            <Check className="h-3.5 w-3.5 text-success shrink-0" />
+          ) : (
+            <Copy className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          )}
+        </button>
       </div>
     </Link>
   );
