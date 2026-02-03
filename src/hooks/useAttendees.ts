@@ -24,6 +24,8 @@ export function useAttendees() {
         qrCodeUrl: row.qr_code_url || '',
         checkedInAt: row.checked_in_at,
         eventTitle: row.event_title,
+        totalTickets: row.total_tickets,
+        checkInCount: row.check_in_count,
         contact: {
           id: row.contacts.id,
           name: row.contacts.name,
@@ -58,6 +60,8 @@ export function useAttendeesByEvent(eventTitle: string) {
         qrCodeUrl: row.qr_code_url || '',
         checkedInAt: row.checked_in_at,
         eventTitle: row.event_title,
+        totalTickets: row.total_tickets,
+        checkInCount: row.check_in_count,
         contact: {
           id: row.contacts.id,
           name: row.contacts.name,
@@ -75,9 +79,60 @@ export function useCheckInAttendee() {
 
   return useMutation({
     mutationFn: async (attendeeId: string) => {
+      // First get current check-in count
+      const { data: attendee, error: fetchError } = await supabase
+        .from('attendees')
+        .select('check_in_count, total_tickets')
+        .eq('id', attendeeId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      
+      if (attendee.check_in_count >= attendee.total_tickets) {
+        throw new Error('All tickets already checked in');
+      }
+
       const { error } = await supabase
         .from('attendees')
-        .update({ checked_in_at: new Date().toISOString() })
+        .update({ 
+          check_in_count: attendee.check_in_count + 1,
+          checked_in_at: new Date().toISOString() 
+        })
+        .eq('id', attendeeId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['attendees'] });
+    },
+  });
+}
+
+export function useCheckOutAttendee() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (attendeeId: string) => {
+      // First get current check-in count
+      const { data: attendee, error: fetchError } = await supabase
+        .from('attendees')
+        .select('check_in_count')
+        .eq('id', attendeeId)
+        .single();
+
+      if (fetchError) throw fetchError;
+      
+      if (attendee.check_in_count <= 0) {
+        throw new Error('No check-ins to undo');
+      }
+
+      const newCount = attendee.check_in_count - 1;
+      const { error } = await supabase
+        .from('attendees')
+        .update({ 
+          check_in_count: newCount,
+          checked_in_at: newCount === 0 ? null : new Date().toISOString() 
+        })
         .eq('id', attendeeId);
 
       if (error) throw error;
@@ -111,6 +166,8 @@ export function useFindAttendeeByTicket() {
         qrCodeUrl: data.qr_code_url || '',
         checkedInAt: data.checked_in_at,
         eventTitle: data.event_title,
+        totalTickets: data.total_tickets,
+        checkInCount: data.check_in_count,
         contact: {
           id: data.contacts.id,
           name: data.contacts.name,

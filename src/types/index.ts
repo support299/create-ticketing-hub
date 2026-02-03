@@ -40,6 +40,8 @@ export interface Attendee {
   qrCodeUrl: string;
   checkedInAt: string | null;
   eventTitle: string;
+  totalTickets: number;
+  checkInCount: number;
 }
 
 export interface SalesData {

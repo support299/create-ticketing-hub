@@ -116,28 +116,55 @@ Deno.serve(async (req) => {
       throw new Error('Failed to create order');
     }
 
-    // 4. Create attendees with unique ticket numbers
-    const attendees = [];
-    for (let i = 0; i < payload.quantity; i++) {
-      const ticketNumber = `TKT-${order.id.slice(0, 8).toUpperCase()}-${String.fromCharCode(65 + i)}`;
+    // 4. Check if attendee already exists for this contact + event
+    const { data: existingAttendee } = await supabase
+      .from('attendees')
+      .select('id, total_tickets')
+      .eq('contact_id', contactId)
+      .eq('event_title', event.title)
+      .maybeSingle();
+
+    let attendeeResult;
+    
+    if (existingAttendee) {
+      // Update existing attendee with additional tickets
+      const { data: updatedAttendee, error: updateError } = await supabase
+        .from('attendees')
+        .update({ 
+          total_tickets: existingAttendee.total_tickets + payload.quantity,
+          order_id: order.id, // Update to latest order
+        })
+        .eq('id', existingAttendee.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw new Error('Failed to update attendee');
+      }
+      attendeeResult = updatedAttendee;
+    } else {
+      // Create new attendee with consolidated ticket count
+      const ticketNumber = `TKT-${order.id.slice(0, 8).toUpperCase()}`;
       const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${ticketNumber}`;
       
-      attendees.push({
-        order_id: order.id,
-        contact_id: contactId,
-        ticket_number: ticketNumber,
-        qr_code_url: qrCodeUrl,
-        event_title: event.title,
-      });
-    }
+      const { data: newAttendee, error: attendeeError } = await supabase
+        .from('attendees')
+        .insert({
+          order_id: order.id,
+          contact_id: contactId,
+          ticket_number: ticketNumber,
+          qr_code_url: qrCodeUrl,
+          event_title: event.title,
+          total_tickets: payload.quantity,
+          check_in_count: 0,
+        })
+        .select()
+        .single();
 
-    const { data: createdAttendees, error: attendeesError } = await supabase
-      .from('attendees')
-      .insert(attendees)
-      .select();
-
-    if (attendeesError) {
-      throw new Error('Failed to create attendees');
+      if (attendeeError) {
+        throw new Error('Failed to create attendee');
+      }
+      attendeeResult = newAttendee;
     }
 
     // 5. Update event tickets_sold count
@@ -162,11 +189,14 @@ Deno.serve(async (req) => {
           status: order.status,
           created_at: order.created_at,
         },
-        attendees: createdAttendees?.map(a => ({
-          id: a.id,
-          ticket_number: a.ticket_number,
-          qr_code_url: a.qr_code_url,
-        })),
+        attendee: {
+          id: attendeeResult.id,
+          ticket_number: attendeeResult.ticket_number,
+          qr_code_url: attendeeResult.qr_code_url,
+          total_tickets: attendeeResult.total_tickets,
+          check_in_count: attendeeResult.check_in_count,
+          is_existing: !!existingAttendee,
+        },
         event: {
           title: event.title,
           remaining_seats: availableSeats - payload.quantity,
