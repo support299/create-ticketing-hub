@@ -1,18 +1,16 @@
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Calendar, MapPin, Clock, Users, Edit, Trash2 } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { TicketTypeCard } from '@/components/events/TicketTypeCard';
 import { Button } from '@/components/ui/button';
-import { getEventById, getTicketTypesByEventId, mockAttendees, mockContacts } from '@/data/mockData';
+import { getEventById, mockAttendees, mockContacts } from '@/data/mockData';
 import { format } from 'date-fns';
 import { AttendeesTable } from '@/components/attendees/AttendeesTable';
 
 export default function EventDetail() {
   const { id } = useParams();
   const event = getEventById(id || '');
-  const ticketTypes = getTicketTypesByEventId(id || '');
 
-  // Get attendees for this event (simplified - in real app would filter by event)
+  // Get attendees for this event
   const eventAttendees = mockAttendees
     .filter(a => a.eventTitle === event?.title)
     .map(a => ({
@@ -36,10 +34,6 @@ export default function EventDetail() {
       </MainLayout>
     );
   }
-
-  const totalSold = ticketTypes.reduce((acc, t) => acc + t.sold, 0);
-  const totalCapacity = ticketTypes.reduce((acc, t) => acc + t.quantity, 0);
-  const totalRevenue = ticketTypes.reduce((acc, t) => acc + (t.sold * t.price), 0);
 
   return (
     <MainLayout>
@@ -108,47 +102,9 @@ export default function EventDetail() {
               <Users className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Attendance</p>
-              <p className="font-semibold">{totalSold} / {totalCapacity}</p>
+              <p className="text-xs text-muted-foreground">Capacity</p>
+              <p className="font-semibold">{event.capacity}</p>
             </div>
-          </div>
-        </div>
-
-        {/* Revenue Summary */}
-        <div className="rounded-2xl border border-border bg-card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Revenue</p>
-              <p className="text-4xl font-bold font-display text-gradient">${totalRevenue.toLocaleString()}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">Sell-through Rate</p>
-              <p className="text-2xl font-bold font-display">
-                {Math.round((totalSold / totalCapacity) * 100)}%
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Ticket Types */}
-        <div>
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h3 className="text-lg font-semibold font-display">Ticket Types</h3>
-              <p className="text-sm text-muted-foreground">Manage your ticket offerings</p>
-            </div>
-            <Button variant="outline">Add Ticket Type</Button>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {ticketTypes.map((ticketType, index) => (
-              <div
-                key={ticketType.id}
-                className="animate-slide-up"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <TicketTypeCard ticketType={ticketType} />
-              </div>
-            ))}
           </div>
         </div>
 
