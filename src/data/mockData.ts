@@ -53,24 +53,10 @@ export const mockContacts: Contact[] = [
   { id: '5', name: 'James Miller', email: 'j.miller@email.com', phone: '+1 555-0105' },
 ];
 
-export const mockOrders: Order[] = [
-  { id: 'ORD-001', eventId: '1', contactId: '1', total: 50, status: 'completed', createdAt: '2024-02-10T14:30:00Z', quantity: 2 },
-  { id: 'ORD-002', eventId: '1', contactId: '2', total: 50, status: 'completed', createdAt: '2024-02-11T09:15:00Z', quantity: 1 },
-  { id: 'ORD-003', eventId: '2', contactId: '3', total: 0, status: 'completed', createdAt: '2024-02-18T16:45:00Z', quantity: 2 },
-  { id: 'ORD-004', eventId: '3', contactId: '4', total: 40, status: 'completed', createdAt: '2024-02-22T11:00:00Z', quantity: 2 },
-  { id: 'ORD-005', eventId: '1', contactId: '5', total: 25, status: 'pending', createdAt: '2024-02-25T08:30:00Z', quantity: 1 },
-  { id: 'ORD-006', eventId: '3', contactId: '1', total: 40, status: 'cancelled', createdAt: '2024-02-23T13:20:00Z', quantity: 1 },
-];
+export const mockOrders: Order[] = [];
 
 // Mutable attendees array for check-in state
-export let mockAttendees: Attendee[] = [
-  { id: '1', orderId: 'ORD-001', contactId: '1', ticketNumber: 'TKT-001-A', qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TKT-001-A', checkedInAt: null, eventTitle: 'Indie Music Night' },
-  { id: '2', orderId: 'ORD-001', contactId: '1', ticketNumber: 'TKT-001-B', qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TKT-001-B', checkedInAt: '2024-03-15T19:45:00Z', eventTitle: 'Indie Music Night' },
-  { id: '3', orderId: 'ORD-002', contactId: '2', ticketNumber: 'TKT-002-A', qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TKT-002-A', checkedInAt: null, eventTitle: 'Indie Music Night' },
-  { id: '4', orderId: 'ORD-003', contactId: '3', ticketNumber: 'TKT-003-A', qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TKT-003-A', checkedInAt: null, eventTitle: 'Creator Meetup: NYC' },
-  { id: '5', orderId: 'ORD-003', contactId: '3', ticketNumber: 'TKT-003-B', qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TKT-003-B', checkedInAt: null, eventTitle: 'Creator Meetup: NYC' },
-  { id: '6', orderId: 'ORD-004', contactId: '4', ticketNumber: 'TKT-004-A', qrCodeUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=TKT-004-A', checkedInAt: null, eventTitle: 'Stand-up Comedy Showcase' },
-];
+export let mockAttendees: Attendee[] = [];
 
 export const mockSalesData: SalesData[] = [
   { date: '2024-02-01', revenue: 450, tickets: 18 },
