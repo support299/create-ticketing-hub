@@ -1,26 +1,46 @@
 import { MainLayout } from '@/components/layout/MainLayout';
 import { AttendeesTable } from '@/components/attendees/AttendeesTable';
-import { getAttendeesWithContacts, checkInAttendee } from '@/data/mockData';
+import { useAttendees, useCheckInAttendee } from '@/hooks/useAttendees';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { toast } from 'sonner';
-import { useState } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Attendees() {
-  const [, forceUpdate] = useState(0);
-  
-  const attendees = getAttendeesWithContacts();
+  const { data: attendees = [], isLoading } = useAttendees();
+  const checkInMutation = useCheckInAttendee();
 
   const handleCheckIn = (attendeeId: string) => {
     const attendee = attendees.find(a => a.id === attendeeId);
-    checkInAttendee(attendeeId);
-    toast.success('Checked in successfully!', {
-      description: `${attendee?.contact.name} has been checked in.`,
+    checkInMutation.mutate(attendeeId, {
+      onSuccess: () => {
+        toast.success('Checked in successfully!', {
+          description: `${attendee?.contact.name} has been checked in.`,
+        });
+      },
+      onError: () => {
+        toast.error('Failed to check in');
+      },
     });
-    forceUpdate(n => n + 1);
   };
 
   const checkedIn = attendees.filter(a => a.checkedInAt).length;
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="space-y-8">
+          <Skeleton className="h-10 w-48" />
+          <div className="grid gap-4 md:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-20 rounded-xl" />
+            ))}
+          </div>
+          <Skeleton className="h-[400px] rounded-xl" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -59,7 +79,13 @@ export default function Attendees() {
         </div>
 
         {/* Attendees Table */}
-        <AttendeesTable attendees={attendees} onCheckIn={handleCheckIn} />
+        {attendees.length === 0 ? (
+          <div className="text-center py-12 rounded-2xl border border-dashed border-border">
+            <p className="text-muted-foreground">No attendees yet.</p>
+          </div>
+        ) : (
+          <AttendeesTable attendees={attendees} onCheckIn={handleCheckIn} />
+        )}
       </div>
     </MainLayout>
   );

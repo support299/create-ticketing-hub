@@ -3,7 +3,9 @@ import { ArrowLeft, Calendar, MapPin, Clock, Users, Edit, Trash2, Power } from '
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { getEventById, mockAttendees, mockContacts, checkInAttendee, toggleEventStatus, updateEvent, deleteEvent } from '@/data/mockData';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useEvent, useUpdateEvent, useDeleteEvent } from '@/hooks/useEvents';
+import { useAttendeesByEvent, useCheckInAttendee } from '@/hooks/useAttendees';
 import { format } from 'date-fns';
 import { AttendeesTable } from '@/components/attendees/AttendeesTable';
 import { EditEventDialog } from '@/components/events/EditEventDialog';
@@ -25,56 +27,89 @@ import {
 export default function EventDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [, forceUpdate] = useState(0);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
-  const event = getEventById(id || '');
-
-  // Get attendees for this event
-  const eventAttendees = mockAttendees
-    .filter(a => a.eventTitle === event?.title)
-    .map(a => ({
-      ...a,
-      contact: mockContacts.find(c => c.id === a.contactId)!,
-    }))
-    .filter(a => a.contact);
+  const { data: event, isLoading } = useEvent(id || '');
+  const { data: eventAttendees = [] } = useAttendeesByEvent(event?.title || '');
+  const updateEvent = useUpdateEvent();
+  const deleteEventMutation = useDeleteEvent();
+  const checkInMutation = useCheckInAttendee();
 
   const handleCheckIn = (attendeeId: string) => {
     const attendee = eventAttendees.find(a => a.id === attendeeId);
-    checkInAttendee(attendeeId);
-    toast.success('Checked in successfully!', {
-      description: `${attendee?.contact.name} has been checked in.`,
+    checkInMutation.mutate(attendeeId, {
+      onSuccess: () => {
+        toast.success('Checked in successfully!', {
+          description: `${attendee?.contact.name} has been checked in.`,
+        });
+      },
+      onError: () => {
+        toast.error('Failed to check in');
+      },
     });
-    forceUpdate(n => n + 1);
   };
 
   const handleToggleStatus = () => {
     if (event) {
-      toggleEventStatus(event.id);
-      toast.success(event.isActive ? 'Event deactivated' : 'Event activated', {
-        description: event.isActive 
-          ? 'This event is now inactive and hidden from public view.'
-          : 'This event is now active and open for registration.',
+      updateEvent.mutate({ id: event.id, isActive: !event.isActive }, {
+        onSuccess: () => {
+          toast.success(event.isActive ? 'Event deactivated' : 'Event activated', {
+            description: event.isActive 
+              ? 'This event is now inactive and hidden from public view.'
+              : 'This event is now active and open for registration.',
+          });
+        },
+        onError: () => {
+          toast.error('Failed to update event status');
+        },
       });
-      forceUpdate(n => n + 1);
     }
   };
 
   const handleEventUpdated = (updatedEvent: Event) => {
-    updateEvent(updatedEvent.id, updatedEvent);
-    forceUpdate(n => n + 1);
+    updateEvent.mutate({ id: updatedEvent.id, ...updatedEvent }, {
+      onSuccess: () => {
+        toast.success('Event updated successfully!');
+        setIsEditDialogOpen(false);
+      },
+      onError: () => {
+        toast.error('Failed to update event');
+      },
+    });
   };
 
   const handleDeleteEvent = () => {
     if (event) {
-      deleteEvent(event.id);
-      toast.success('Event deleted', {
-        description: `"${event.title}" has been permanently deleted.`,
+      deleteEventMutation.mutate(event.id, {
+        onSuccess: () => {
+          toast.success('Event deleted', {
+            description: `"${event.title}" has been permanently deleted.`,
+          });
+          navigate('/events');
+        },
+        onError: () => {
+          toast.error('Failed to delete event');
+        },
       });
-      navigate('/events');
     }
   };
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="space-y-8">
+          <Skeleton className="h-6 w-32" />
+          <Skeleton className="h-64 rounded-2xl" />
+          <div className="grid gap-4 md:grid-cols-5">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Skeleton key={i} className="h-20 rounded-xl" />
+            ))}
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   if (!event) {
     return (
@@ -156,6 +191,7 @@ export default function EventDetail() {
           <Switch
             checked={event.isActive}
             onCheckedChange={handleToggleStatus}
+            disabled={updateEvent.isPending}
           />
         </div>
 
@@ -241,9 +277,10 @@ export default function EventDetail() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteEvent}
+              disabled={deleteEventMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete Event
+              {deleteEventMutation.isPending ? 'Deleting...' : 'Delete Event'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

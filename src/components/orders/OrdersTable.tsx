@@ -1,6 +1,6 @@
 import { Order, Contact } from '@/types';
 import { StatusBadge } from '@/components/ui/status-badge';
-import { getEventById } from '@/data/mockData';
+import { useEvents } from '@/hooks/useEvents';
 import { format } from 'date-fns';
 import {
   Table,
@@ -16,6 +16,13 @@ interface OrdersTableProps {
 }
 
 export function OrdersTable({ orders }: OrdersTableProps) {
+  const { data: events = [] } = useEvents();
+
+  const getEventTitle = (eventId: string) => {
+    const event = events.find(e => e.id === eventId);
+    return event?.title || 'Unknown';
+  };
+
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       <Table>
@@ -31,31 +38,28 @@ export function OrdersTable({ orders }: OrdersTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {orders.map((order) => {
-            const event = getEventById(order.eventId);
-            return (
-              <TableRow key={order.id} className="hover:bg-muted/30 transition-colors">
-                <TableCell className="font-mono text-sm">{order.id}</TableCell>
-                <TableCell>
-                  <div>
-                    <p className="font-medium">{order.contact.name}</p>
-                    <p className="text-xs text-muted-foreground">{order.contact.email}</p>
-                  </div>
-                </TableCell>
-                <TableCell className="max-w-[200px] truncate">{event?.title || 'Unknown'}</TableCell>
-                <TableCell>{order.quantity}</TableCell>
-                <TableCell className="font-semibold font-display">
-                  {order.total === 0 ? 'Free' : `$${order.total}`}
-                </TableCell>
-                <TableCell>
-                  <StatusBadge status={order.status} />
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {format(new Date(order.createdAt), 'MMM d, yyyy')}
-                </TableCell>
-              </TableRow>
-            );
-          })}
+          {orders.map((order) => (
+            <TableRow key={order.id} className="hover:bg-muted/30 transition-colors">
+              <TableCell className="font-mono text-sm">{order.id.slice(0, 8)}</TableCell>
+              <TableCell>
+                <div>
+                  <p className="font-medium">{order.contact.name}</p>
+                  <p className="text-xs text-muted-foreground">{order.contact.email}</p>
+                </div>
+              </TableCell>
+              <TableCell className="max-w-[200px] truncate">{getEventTitle(order.eventId)}</TableCell>
+              <TableCell>{order.quantity}</TableCell>
+              <TableCell className="font-semibold font-display">
+                {order.total === 0 ? 'Free' : `$${order.total}`}
+              </TableCell>
+              <TableCell>
+                <StatusBadge status={order.status} />
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {format(new Date(order.createdAt), 'MMM d, yyyy')}
+              </TableCell>
+            </TableRow>
+          ))}
         </TableBody>
       </Table>
     </div>

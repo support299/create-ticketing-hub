@@ -14,7 +14,174 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      attendees: {
+        Row: {
+          checked_in_at: string | null
+          contact_id: string
+          created_at: string
+          event_title: string
+          id: string
+          order_id: string
+          qr_code_url: string | null
+          ticket_number: string
+        }
+        Insert: {
+          checked_in_at?: string | null
+          contact_id: string
+          created_at?: string
+          event_title: string
+          id?: string
+          order_id: string
+          qr_code_url?: string | null
+          ticket_number: string
+        }
+        Update: {
+          checked_in_at?: string | null
+          contact_id?: string
+          created_at?: string
+          event_title?: string
+          id?: string
+          order_id?: string
+          qr_code_url?: string | null
+          ticket_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendees_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendees_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contacts: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          name: string
+          phone: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          name: string
+          phone?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          name?: string
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      events: {
+        Row: {
+          capacity: number
+          cover_image: string | null
+          created_at: string
+          date: string
+          description: string | null
+          end_date: string
+          id: string
+          is_active: boolean
+          ticket_price: number
+          tickets_sold: number
+          time: string
+          title: string
+          updated_at: string
+          venue: string
+        }
+        Insert: {
+          capacity?: number
+          cover_image?: string | null
+          created_at?: string
+          date: string
+          description?: string | null
+          end_date: string
+          id?: string
+          is_active?: boolean
+          ticket_price?: number
+          tickets_sold?: number
+          time: string
+          title: string
+          updated_at?: string
+          venue: string
+        }
+        Update: {
+          capacity?: number
+          cover_image?: string | null
+          created_at?: string
+          date?: string
+          description?: string | null
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          ticket_price?: number
+          tickets_sold?: number
+          time?: string
+          title?: string
+          updated_at?: string
+          venue?: string
+        }
+        Relationships: []
+      }
+      orders: {
+        Row: {
+          contact_id: string
+          created_at: string
+          event_id: string
+          id: string
+          quantity: number
+          status: string
+          total: number
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          event_id: string
+          id?: string
+          quantity?: number
+          status?: string
+          total?: number
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+          quantity?: number
+          status?: string
+          total?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
