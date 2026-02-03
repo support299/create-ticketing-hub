@@ -1,18 +1,16 @@
 import { Calendar, MapPin, Users, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Event, TicketType } from '@/types';
+import { Event } from '@/types';
 import { format } from 'date-fns';
 
 interface EventCardProps {
   event: Event;
-  ticketTypes: TicketType[];
 }
 
-export function EventCard({ event, ticketTypes }: EventCardProps) {
-  const totalSold = ticketTypes.reduce((acc, t) => acc + t.sold, 0);
-  const totalCapacity = ticketTypes.reduce((acc, t) => acc + t.quantity, 0);
-  const revenue = ticketTypes.reduce((acc, t) => acc + (t.sold * t.price), 0);
-  const soldPercentage = Math.round((totalSold / totalCapacity) * 100);
+export function EventCard({ event }: EventCardProps) {
+  const ticketsSold = event.ticketsSold || 0;
+  const revenue = ticketsSold * (event.ticketPrice || 0);
+  const soldPercentage = event.capacity > 0 ? Math.round((ticketsSold / event.capacity) * 100) : 0;
 
   return (
     <Link
@@ -53,11 +51,13 @@ export function EventCard({ event, ticketTypes }: EventCardProps) {
         <div className="flex items-center justify-between pt-3 border-t border-border">
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">{totalSold}/{totalCapacity}</span>
+            <span className="text-sm font-medium">{ticketsSold}/{event.capacity}</span>
             <span className="text-xs text-muted-foreground">({soldPercentage}%)</span>
           </div>
           <div className="text-right">
-            <p className="text-lg font-bold text-primary font-display">${revenue.toLocaleString()}</p>
+            <p className="text-lg font-bold text-primary font-display">
+              {event.ticketPrice === 0 ? 'Free' : `$${revenue.toLocaleString()}`}
+            </p>
             <p className="text-xs text-muted-foreground">revenue</p>
           </div>
         </div>

@@ -7,17 +7,8 @@ export interface Event {
   description: string;
   coverImage: string;
   capacity: number;
-}
-
-export interface TicketType {
-  id: string;
-  eventId: string;
-  name: string;
-  price: number;
-  quantity: number;
-  sold: number;
-  salesStart: string;
-  salesEnd: string;
+  ticketsSold?: number;
+  ticketPrice?: number;
 }
 
 export interface Contact {
@@ -35,7 +26,6 @@ export interface Order {
   total: number;
   status: 'pending' | 'completed' | 'cancelled' | 'refunded';
   createdAt: string;
-  ticketTypeId: string;
   quantity: number;
 }
 
@@ -47,7 +37,6 @@ export interface Attendee {
   ticketNumber: string;
   qrCodeUrl: string;
   checkedInAt: string | null;
-  ticketTypeName: string;
   eventTitle: string;
 }
 
