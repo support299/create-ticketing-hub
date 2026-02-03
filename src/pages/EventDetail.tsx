@@ -2,7 +2,8 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Calendar, MapPin, Clock, Users, Edit, Trash2, Power } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
-import { getEventById, mockAttendees, mockContacts, checkInAttendee } from '@/data/mockData';
+import { Switch } from '@/components/ui/switch';
+import { getEventById, mockAttendees, mockContacts, checkInAttendee, toggleEventStatus } from '@/data/mockData';
 import { format } from 'date-fns';
 import { AttendeesTable } from '@/components/attendees/AttendeesTable';
 import { cn } from '@/lib/utils';
@@ -11,8 +12,9 @@ import { toast } from 'sonner';
 
 export default function EventDetail() {
   const { id } = useParams();
-  const event = getEventById(id || '');
   const [, forceUpdate] = useState(0);
+  
+  const event = getEventById(id || '');
 
   // Get attendees for this event
   const eventAttendees = mockAttendees
@@ -30,6 +32,18 @@ export default function EventDetail() {
       description: `${attendee?.contact.name} has been checked in.`,
     });
     forceUpdate(n => n + 1);
+  };
+
+  const handleToggleStatus = () => {
+    if (event) {
+      toggleEventStatus(event.id);
+      toast.success(event.isActive ? 'Event deactivated' : 'Event activated', {
+        description: event.isActive 
+          ? 'This event is now inactive and hidden from public view.'
+          : 'This event is now active and open for registration.',
+      });
+      forceUpdate(n => n + 1);
+    }
   };
 
   if (!event) {
@@ -91,6 +105,30 @@ export default function EventDetail() {
               Delete
             </Button>
           </div>
+        </div>
+
+        {/* Status Toggle Card */}
+        <div className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "flex h-10 w-10 items-center justify-center rounded-lg",
+              event.isActive ? "bg-success/10" : "bg-muted"
+            )}>
+              <Power className={cn("h-5 w-5", event.isActive ? "text-success" : "text-muted-foreground")} />
+            </div>
+            <div>
+              <p className="font-semibold">Event Status</p>
+              <p className="text-sm text-muted-foreground">
+                {event.isActive 
+                  ? 'This event is active and open for registration' 
+                  : 'This event is inactive and hidden from public'}
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={event.isActive}
+            onCheckedChange={handleToggleStatus}
+          />
         </div>
 
         {/* Event Info */}
