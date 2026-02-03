@@ -130,3 +130,8 @@ export const updateEvent = (eventId: string, updates: Partial<Event>): void => {
       : e
   );
 };
+
+// Helper to delete an event
+export const deleteEvent = (eventId: string): void => {
+  mockEvents = mockEvents.filter(e => e.id !== eventId);
+};
