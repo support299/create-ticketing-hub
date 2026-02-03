@@ -1,6 +1,6 @@
 import { Event, Contact, Order, Attendee, SalesData } from '@/types';
 
-export const mockEvents: Event[] = [
+export let mockEvents: Event[] = [
   {
     id: '1',
     title: 'Indie Music Night',
@@ -110,5 +110,23 @@ export const checkInAttendee = (attendeeId: string): void => {
     a.id === attendeeId 
       ? { ...a, checkedInAt: new Date().toISOString() }
       : a
+  );
+};
+
+// Helper to toggle event active status
+export const toggleEventStatus = (eventId: string): void => {
+  mockEvents = mockEvents.map(e => 
+    e.id === eventId 
+      ? { ...e, isActive: !e.isActive }
+      : e
+  );
+};
+
+// Helper to update an event
+export const updateEvent = (eventId: string, updates: Partial<Event>): void => {
+  mockEvents = mockEvents.map(e => 
+    e.id === eventId 
+      ? { ...e, ...updates }
+      : e
   );
 };
