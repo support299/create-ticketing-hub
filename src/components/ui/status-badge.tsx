@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 
-type StatusType = 'pending' | 'completed' | 'cancelled' | 'refunded' | 'checked-in' | 'not-checked-in';
+type StatusType = 'pending' | 'completed' | 'cancelled' | 'refunded' | 'checked-in' | 'not-checked-in' | 'partial';
 
 interface StatusBadgeProps {
   status: StatusType;
@@ -14,6 +14,7 @@ const statusStyles: Record<StatusType, string> = {
   refunded: 'bg-muted text-muted-foreground border-muted-foreground/30',
   'checked-in': 'bg-success/15 text-success border-success/30',
   'not-checked-in': 'bg-muted text-muted-foreground border-muted-foreground/30',
+  'partial': 'bg-warning/15 text-warning border-warning/30',
 };
 
 const statusLabels: Record<StatusType, string> = {
@@ -23,6 +24,7 @@ const statusLabels: Record<StatusType, string> = {
   refunded: 'Refunded',
   'checked-in': 'Checked In',
   'not-checked-in': 'Not Checked In',
+  'partial': 'Partial',
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {

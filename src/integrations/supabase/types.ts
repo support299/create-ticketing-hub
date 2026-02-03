@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       attendees: {
         Row: {
+          check_in_count: number
           checked_in_at: string | null
           contact_id: string
           created_at: string
@@ -24,8 +25,10 @@ export type Database = {
           order_id: string
           qr_code_url: string | null
           ticket_number: string
+          total_tickets: number
         }
         Insert: {
+          check_in_count?: number
           checked_in_at?: string | null
           contact_id: string
           created_at?: string
@@ -34,8 +37,10 @@ export type Database = {
           order_id: string
           qr_code_url?: string | null
           ticket_number: string
+          total_tickets?: number
         }
         Update: {
+          check_in_count?: number
           checked_in_at?: string | null
           contact_id?: string
           created_at?: string
@@ -44,6 +49,7 @@ export type Database = {
           order_id?: string
           qr_code_url?: string | null
           ticket_number?: string
+          total_tickets?: number
         }
         Relationships: [
           {

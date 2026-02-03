@@ -1,6 +1,6 @@
 import { MainLayout } from '@/components/layout/MainLayout';
 import { AttendeesTable } from '@/components/attendees/AttendeesTable';
-import { useAttendees, useCheckInAttendee } from '@/hooks/useAttendees';
+import { useAttendees, useCheckInAttendee, useCheckOutAttendee } from '@/hooks/useAttendees';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function Attendees() {
   const { data: attendees = [], isLoading } = useAttendees();
   const checkInMutation = useCheckInAttendee();
+  const checkOutMutation = useCheckOutAttendee();
 
   const handleCheckIn = (attendeeId: string) => {
     const attendee = attendees.find(a => a.id === attendeeId);
@@ -18,13 +19,32 @@ export default function Attendees() {
           description: `${attendee?.contact.name} has been checked in.`,
         });
       },
-      onError: () => {
-        toast.error('Failed to check in');
+      onError: (error) => {
+        toast.error('Failed to check in', {
+          description: error instanceof Error ? error.message : undefined,
+        });
       },
     });
   };
 
-  const checkedIn = attendees.filter(a => a.checkedInAt).length;
+  const handleCheckOut = (attendeeId: string) => {
+    const attendee = attendees.find(a => a.id === attendeeId);
+    checkOutMutation.mutate(attendeeId, {
+      onSuccess: () => {
+        toast.success('Check-in undone', {
+          description: `${attendee?.contact.name}'s last check-in has been reversed.`,
+        });
+      },
+      onError: (error) => {
+        toast.error('Failed to undo check-in', {
+          description: error instanceof Error ? error.message : undefined,
+        });
+      },
+    });
+  };
+
+  const totalTickets = attendees.reduce((sum, a) => sum + a.totalTickets, 0);
+  const totalCheckedIn = attendees.reduce((sum, a) => sum + a.checkInCount, 0);
 
   if (isLoading) {
     return (
@@ -63,17 +83,17 @@ export default function Attendees() {
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-3">
           <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-sm text-muted-foreground">Total Attendees</p>
-            <p className="text-2xl font-bold font-display">{attendees.length}</p>
+            <p className="text-sm text-muted-foreground">Total Tickets</p>
+            <p className="text-2xl font-bold font-display">{totalTickets}</p>
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
             <p className="text-sm text-muted-foreground">Checked In</p>
-            <p className="text-2xl font-bold font-display text-success">{checkedIn}</p>
+            <p className="text-2xl font-bold font-display text-success">{totalCheckedIn}</p>
           </div>
           <div className="rounded-xl border border-border bg-card p-4">
-            <p className="text-sm text-muted-foreground">Not Checked In</p>
+            <p className="text-sm text-muted-foreground">Remaining</p>
             <p className="text-2xl font-bold font-display text-muted-foreground">
-              {attendees.length - checkedIn}
+              {totalTickets - totalCheckedIn}
             </p>
           </div>
         </div>
@@ -84,7 +104,11 @@ export default function Attendees() {
             <p className="text-muted-foreground">No attendees yet.</p>
           </div>
         ) : (
-          <AttendeesTable attendees={attendees} onCheckIn={handleCheckIn} />
+          <AttendeesTable 
+            attendees={attendees} 
+            onCheckIn={handleCheckIn}
+            onCheckOut={handleCheckOut}
+          />
         )}
       </div>
     </MainLayout>
