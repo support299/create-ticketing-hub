@@ -7,6 +7,7 @@ import { useFindAttendeeByTicket, useCheckInAttendee } from '@/hooks/useAttendee
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Attendee, Contact } from '@/types';
+import { QrScanner } from '@/components/checkin/QrScanner';
 
 interface CheckInResult {
   success: boolean;
@@ -21,13 +22,16 @@ export default function CheckIn() {
   const findAttendee = useFindAttendeeByTicket();
   const checkInMutation = useCheckInAttendee();
 
-  const handleSearch = async () => {
-    if (!ticketNumber.trim()) {
+  const handleLookup = (ticket: string) => {
+    const trimmed = ticket.trim();
+    if (!trimmed) {
       toast.error('Please enter a ticket number');
       return;
     }
 
-    findAttendee.mutate(ticketNumber, {
+    setTicketNumber(trimmed);
+
+    findAttendee.mutate(trimmed, {
       onSuccess: (attendee) => {
         if (!attendee) {
           setResult({
@@ -37,14 +41,14 @@ export default function CheckIn() {
           return;
         }
 
-        const isAlreadyCheckedIn = !!attendee.checkedInAt;
+        const hasCapacity = attendee.checkInCount < attendee.totalTickets;
 
         setResult({
-          success: !isAlreadyCheckedIn,
+          success: hasCapacity,
           attendee,
-          message: isAlreadyCheckedIn 
-            ? 'This ticket has already been used for check-in.'
-            : 'Ticket verified successfully!',
+          message: hasCapacity
+            ? `Ticket verified! Checked in ${attendee.checkInCount}/${attendee.totalTickets}.`
+            : `All ${attendee.totalTickets} tickets already checked in.`,
         });
       },
       onError: () => {
@@ -54,6 +58,12 @@ export default function CheckIn() {
         });
       },
     });
+  };
+
+  const handleSearch = () => handleLookup(ticketNumber);
+
+  const handleQrScan = (decodedText: string) => {
+    handleLookup(decodedText);
   };
 
   const handleCheckIn = () => {
@@ -97,22 +107,32 @@ export default function CheckIn() {
 
         {/* Search Input */}
         <div className="max-w-xl mx-auto">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              placeholder="Enter ticket number (e.g., TKT-001-A)"
-              value={ticketNumber}
-              onChange={(e) => setTicketNumber(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="pl-12 h-14 text-lg rounded-xl"
-            />
-            <Button
-              onClick={handleSearch}
-              disabled={findAttendee.isPending}
-              className="absolute right-2 top-1/2 -translate-y-1/2 gradient-primary"
-            >
-              {findAttendee.isPending ? 'Searching...' : 'Search'}
-            </Button>
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                placeholder="Enter ticket number (e.g., TKT-001-A)"
+                value={ticketNumber}
+                onChange={(e) => setTicketNumber(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="pl-12 h-14 text-lg rounded-xl"
+              />
+              <Button
+                onClick={handleSearch}
+                disabled={findAttendee.isPending}
+                className="absolute right-2 top-1/2 -translate-y-1/2 gradient-primary"
+              >
+                {findAttendee.isPending ? 'Searching...' : 'Search'}
+              </Button>
+            </div>
+
+            <div className="relative flex items-center gap-4">
+              <div className="flex-1 border-t border-border" />
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">or</span>
+              <div className="flex-1 border-t border-border" />
+            </div>
+
+            <QrScanner onScan={handleQrScan} enabled={!result} />
           </div>
         </div>
 
@@ -225,7 +245,7 @@ export default function CheckIn() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary">•</span>
-                  QR code scanning will be available soon
+                  Use the camera scanner for quick QR-based check-in
                 </li>
               </ul>
             </div>
