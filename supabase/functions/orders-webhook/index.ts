@@ -119,54 +119,27 @@ Deno.serve(async (req) => {
       throw new Error('Failed to create order');
     }
 
-    // 4. Check if attendee already exists for this contact + event
-    const { data: existingAttendee } = await supabase
-      .from('attendees')
-      .select('id, total_tickets')
-      .eq('contact_id', contactId)
-      .eq('event_title', event.title)
-      .maybeSingle();
-
-    let attendeeResult;
+    // 4. Create a new attendee for this order
+    const ticketNumber = `TKT-${order.id.slice(0, 8).toUpperCase()}`;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${ticketNumber}`;
     
-    if (existingAttendee) {
-      const { data: updatedAttendee, error: updateError } = await supabase
-        .from('attendees')
-        .update({ 
-          total_tickets: existingAttendee.total_tickets + payload.quantity,
-          order_id: order.id,
-        })
-        .eq('id', existingAttendee.id)
-        .select()
-        .single();
+    const { data: attendeeResult, error: attendeeError } = await supabase
+      .from('attendees')
+      .insert({
+        order_id: order.id,
+        contact_id: contactId,
+        ticket_number: ticketNumber,
+        qr_code_url: qrCodeUrl,
+        event_title: event.title,
+        total_tickets: payload.quantity,
+        check_in_count: 0,
+        location_id: locationId,
+      })
+      .select()
+      .single();
 
-      if (updateError) {
-        throw new Error('Failed to update attendee');
-      }
-      attendeeResult = updatedAttendee;
-    } else {
-      const ticketNumber = `TKT-${order.id.slice(0, 8).toUpperCase()}`;
-      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${ticketNumber}`;
-      
-      const { data: newAttendee, error: attendeeError } = await supabase
-        .from('attendees')
-        .insert({
-          order_id: order.id,
-          contact_id: contactId,
-          ticket_number: ticketNumber,
-          qr_code_url: qrCodeUrl,
-          event_title: event.title,
-          total_tickets: payload.quantity,
-          check_in_count: 0,
-          location_id: locationId,
-        })
-        .select()
-        .single();
-
-      if (attendeeError) {
-        throw new Error('Failed to create attendee');
-      }
-      attendeeResult = newAttendee;
+    if (attendeeError) {
+      throw new Error('Failed to create attendee');
     }
 
     // 5. Update event tickets_sold count
@@ -199,7 +172,6 @@ Deno.serve(async (req) => {
           total_tickets: attendeeResult.total_tickets,
           check_in_count: attendeeResult.check_in_count,
           location_id: locationId,
-          is_existing: !!existingAttendee,
         },
         event: {
           title: event.title,
