@@ -97,18 +97,6 @@ export function AttendeesTable({ attendees, onCheckIn, onCheckOut }: AttendeesTa
                         </TooltipTrigger>
                         <TooltipContent>View QR Code</TooltipContent>
                       </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSendTicket(attendee)}
-                          >
-                            <Mail className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Send Ticket</TooltipContent>
-                      </Tooltip>
                       {canCheckIn && onCheckIn && (
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -169,13 +157,6 @@ export function AttendeesTable({ attendees, onCheckIn, onCheckOut }: AttendeesTa
                   Check-ins: {selectedAttendee.checkInCount}/{selectedAttendee.totalTickets}
                 </p>
               </div>
-              <Button
-                className="w-full gradient-primary"
-                onClick={() => handleSendTicket(selectedAttendee)}
-              >
-                <Mail className="h-4 w-4 mr-2" />
-                Email Ticket
-              </Button>
             </div>
           )}
         </DialogContent>
