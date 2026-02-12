@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
     const email = raw.email;
     const phone = raw.phone || null;
     const quantity = raw.order?.quantity || 1;
-    const total = raw.order?.amount || 0; // amount is already in dollars
+    const total = raw.order?.metadata?.amount ? raw.order.metadata.amount / 100 : (raw.order?.amount || 0); // use Stripe metadata amount (cents) if available
     const status = "completed";
 
     if (!eventId || !email || !fullName) {
