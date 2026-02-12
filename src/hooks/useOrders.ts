@@ -45,6 +45,16 @@ export function useDeleteOrder() {
 
   return useMutation({
     mutationFn: async (orderId: string) => {
+      // Get order details to know the quantity for updating event tickets_sold
+      const { data: order, error: orderFetchError } = await supabase
+        .from('orders')
+        .select('quantity, event_id')
+        .eq('id', orderId)
+        .single();
+
+      if (orderFetchError) throw orderFetchError;
+
+      // Delete attendees linked to this order
       const { error: attendeeError } = await supabase
         .from('attendees')
         .delete()
@@ -52,12 +62,27 @@ export function useDeleteOrder() {
 
       if (attendeeError) throw attendeeError;
 
+      // Delete the order
       const { error } = await supabase
         .from('orders')
         .delete()
         .eq('id', orderId);
 
       if (error) throw error;
+
+      // Reduce tickets_sold on the event
+      const { data: event } = await supabase
+        .from('events')
+        .select('tickets_sold')
+        .eq('id', order.event_id)
+        .single();
+
+      if (event) {
+        await supabase
+          .from('events')
+          .update({ tickets_sold: Math.max(0, (event.tickets_sold || 0) - order.quantity) })
+          .eq('id', order.event_id);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
