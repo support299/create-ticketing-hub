@@ -22,6 +22,7 @@ export type Database = {
           created_at: string
           event_title: string
           id: string
+          location_id: string | null
           order_id: string
           qr_code_url: string | null
           ticket_number: string
@@ -34,6 +35,7 @@ export type Database = {
           created_at?: string
           event_title: string
           id?: string
+          location_id?: string | null
           order_id: string
           qr_code_url?: string | null
           ticket_number: string
@@ -46,6 +48,7 @@ export type Database = {
           created_at?: string
           event_title?: string
           id?: string
+          location_id?: string | null
           order_id?: string
           qr_code_url?: string | null
           ticket_number?: string
@@ -102,6 +105,7 @@ export type Database = {
           end_date: string
           id: string
           is_active: boolean
+          location_id: string | null
           ticket_price: number
           tickets_sold: number
           time: string
@@ -118,6 +122,7 @@ export type Database = {
           end_date: string
           id?: string
           is_active?: boolean
+          location_id?: string | null
           ticket_price?: number
           tickets_sold?: number
           time: string
@@ -134,6 +139,7 @@ export type Database = {
           end_date?: string
           id?: string
           is_active?: boolean
+          location_id?: string | null
           ticket_price?: number
           tickets_sold?: number
           time?: string
@@ -149,6 +155,7 @@ export type Database = {
           created_at: string
           event_id: string
           id: string
+          location_id: string | null
           quantity: number
           status: string
           total: number
@@ -158,6 +165,7 @@ export type Database = {
           created_at?: string
           event_id: string
           id?: string
+          location_id?: string | null
           quantity?: number
           status?: string
           total?: number
@@ -167,6 +175,7 @@ export type Database = {
           created_at?: string
           event_id?: string
           id?: string
+          location_id?: string | null
           quantity?: number
           status?: string
           total?: number

@@ -7,6 +7,7 @@ const corsHeaders = {
 
 interface OrderWebhookPayload {
   event_id: string;
+  location_id?: string;
   contact: {
     name: string;
     email: string;
@@ -18,7 +19,6 @@ interface OrderWebhookPayload {
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -38,7 +38,6 @@ Deno.serve(async (req) => {
 
     const payload: OrderWebhookPayload = await req.json();
 
-    // Validate required fields
     if (!payload.event_id || !payload.contact?.name || !payload.contact?.email || !payload.quantity) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: event_id, contact.name, contact.email, quantity' }),
@@ -72,6 +71,9 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Use location_id from payload, fall back to event's location_id
+    const locationId = payload.location_id || event.location_id || null;
+
     // 2. Find or create contact
     let contactId: string;
     const { data: existingContact } = await supabase
@@ -99,7 +101,7 @@ Deno.serve(async (req) => {
       contactId = newContact.id;
     }
 
-    // 3. Create order
+    // 3. Create order with location_id
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
@@ -108,6 +110,7 @@ Deno.serve(async (req) => {
         quantity: payload.quantity,
         total: payload.total || 0,
         status: payload.status || 'completed',
+        location_id: locationId,
       })
       .select()
       .single();
@@ -127,12 +130,11 @@ Deno.serve(async (req) => {
     let attendeeResult;
     
     if (existingAttendee) {
-      // Update existing attendee with additional tickets
       const { data: updatedAttendee, error: updateError } = await supabase
         .from('attendees')
         .update({ 
           total_tickets: existingAttendee.total_tickets + payload.quantity,
-          order_id: order.id, // Update to latest order
+          order_id: order.id,
         })
         .eq('id', existingAttendee.id)
         .select()
@@ -143,7 +145,6 @@ Deno.serve(async (req) => {
       }
       attendeeResult = updatedAttendee;
     } else {
-      // Create new attendee with consolidated ticket count
       const ticketNumber = `TKT-${order.id.slice(0, 8).toUpperCase()}`;
       const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${ticketNumber}`;
       
@@ -157,6 +158,7 @@ Deno.serve(async (req) => {
           event_title: event.title,
           total_tickets: payload.quantity,
           check_in_count: 0,
+          location_id: locationId,
         })
         .select()
         .single();
@@ -187,6 +189,7 @@ Deno.serve(async (req) => {
           quantity: order.quantity,
           total: order.total,
           status: order.status,
+          location_id: locationId,
           created_at: order.created_at,
         },
         attendee: {
@@ -195,6 +198,7 @@ Deno.serve(async (req) => {
           qr_code_url: attendeeResult.qr_code_url,
           total_tickets: attendeeResult.total_tickets,
           check_in_count: attendeeResult.check_in_count,
+          location_id: locationId,
           is_existing: !!existingAttendee,
         },
         event: {

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Event } from '@/types';
 import { toast } from 'sonner';
+import { useLocationId } from '@/contexts/LocationContext';
 
 // Transform database row to Event type
 const transformEvent = (row: any): Event => ({
@@ -17,17 +18,25 @@ const transformEvent = (row: any): Event => ({
   ticketsSold: row.tickets_sold || 0,
   ticketPrice: Number(row.ticket_price) || 0,
   isActive: row.is_active,
+  locationId: row.location_id || null,
 });
 
 export function useEvents() {
+  const locationId = useLocationId();
+
   return useQuery({
-    queryKey: ['events'],
+    queryKey: ['events', locationId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('events')
         .select('*')
         .order('date', { ascending: true });
 
+      if (locationId) {
+        query = query.eq('location_id', locationId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data.map(transformEvent);
     },
@@ -54,6 +63,7 @@ export function useEvent(id: string) {
 
 export function useCreateEvent() {
   const queryClient = useQueryClient();
+  const locationId = useLocationId();
 
   return useMutation({
     mutationFn: async (event: Omit<Event, 'id'>) => {
@@ -71,6 +81,7 @@ export function useCreateEvent() {
           ticket_price: event.ticketPrice || 0,
           is_active: event.isActive,
           tickets_sold: 0,
+          location_id: locationId,
         })
         .select()
         .single();

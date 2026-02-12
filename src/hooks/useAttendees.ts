@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Attendee, Contact } from '@/types';
+import { useLocationId } from '@/contexts/LocationContext';
 
 function mapAttendeeRow(row: any): Attendee & { contact: Contact } {
   return {
@@ -25,8 +26,8 @@ function mapAttendeeRow(row: any): Attendee & { contact: Contact } {
 
 export function useAttendees() {
   const queryClient = useQueryClient();
+  const locationId = useLocationId();
 
-  // Subscribe to realtime changes
   useEffect(() => {
     const channel = supabase
       .channel('attendees-realtime')
@@ -45,13 +46,18 @@ export function useAttendees() {
   }, [queryClient]);
 
   return useQuery({
-    queryKey: ['attendees'],
+    queryKey: ['attendees', locationId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('attendees')
         .select(`*, contacts (*)`)
         .order('created_at', { ascending: false });
 
+      if (locationId) {
+        query = query.eq('location_id', locationId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data.map(mapAttendeeRow);
     },

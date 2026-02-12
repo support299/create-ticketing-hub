@@ -1,16 +1,24 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Order, Contact } from '@/types';
+import { useLocationId } from '@/contexts/LocationContext';
 
 export function useOrders() {
+  const locationId = useLocationId();
+
   return useQuery({
-    queryKey: ['orders'],
+    queryKey: ['orders', locationId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('orders')
         .select(`*, contacts (*)`)
         .order('created_at', { ascending: false });
 
+      if (locationId) {
+        query = query.eq('location_id', locationId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
 
       return data.map((row): Order & { contact: Contact } => ({
@@ -37,7 +45,6 @@ export function useDeleteOrder() {
 
   return useMutation({
     mutationFn: async (orderId: string) => {
-      // First delete related attendees
       const { error: attendeeError } = await supabase
         .from('attendees')
         .delete()
@@ -45,7 +52,6 @@ export function useDeleteOrder() {
 
       if (attendeeError) throw attendeeError;
 
-      // Then delete the order
       const { error } = await supabase
         .from('orders')
         .delete()

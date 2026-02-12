@@ -11,6 +11,7 @@ export interface Event {
   ticketsSold?: number;
   ticketPrice?: number;
   isActive: boolean;
+  locationId?: string | null;
 }
 
 export interface Contact {
