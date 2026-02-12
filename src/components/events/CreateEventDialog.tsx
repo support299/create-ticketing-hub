@@ -1,7 +1,8 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Calendar, Clock, MapPin, Image, Users } from 'lucide-react';
+import { Calendar, Clock, MapPin, Image, Users, Hash } from 'lucide-react';
+import { useLocationId } from '@/contexts/LocationContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,6 +34,7 @@ const eventSchema = z.object({
   coverImage: z.string().url('Must be a valid URL').or(z.literal('')),
   capacity: z.coerce.number().min(1, 'Capacity must be at least 1'),
   isActive: z.boolean(),
+  locationId: z.string().optional(),
 }).refine((data) => new Date(data.endDate) >= new Date(data.date), {
   message: "End date must be after or equal to start date",
   path: ["endDate"],
@@ -47,6 +49,7 @@ interface CreateEventDialogProps {
 
 export function CreateEventDialog({ open, onOpenChange }: CreateEventDialogProps) {
   const createEvent = useCreateEvent();
+  const locationId = useLocationId();
   
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
@@ -60,6 +63,7 @@ export function CreateEventDialog({ open, onOpenChange }: CreateEventDialogProps
       coverImage: '',
       capacity: 100,
       isActive: true,
+      locationId: locationId || '',
     },
   });
 
@@ -253,6 +257,31 @@ export function CreateEventDialog({ open, onOpenChange }: CreateEventDialogProps
                       onCheckedChange={field.onChange}
                     />
                   </FormControl>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="locationId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Location ID</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        className="pl-9"
+                        placeholder="e.g., GTWMnVtWVchFvkF6gUBK"
+                        disabled={!!locationId}
+                        {...field}
+                      />
+                    </div>
+                  </FormControl>
+                  {locationId && (
+                    <p className="text-xs text-muted-foreground">Auto-detected from URL</p>
+                  )}
+                  <FormMessage />
                 </FormItem>
               )}
             />
