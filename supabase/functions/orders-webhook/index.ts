@@ -5,19 +5,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-secret',
 };
 
-interface OrderWebhookPayload {
-  event_id: string;
-  location_id?: string;
-  contact: {
-    name: string;
-    email: string;
-    phone?: string;
-  };
-  quantity: number;
-  total: number;
-  status?: 'pending' | 'completed' | 'cancelled' | 'refunded';
-}
-
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -36,11 +23,23 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    const payload: OrderWebhookPayload = await req.json();
+    const raw = await req.json();
 
-    if (!payload.event_id || !payload.contact?.name || !payload.contact?.email || !payload.quantity) {
+    // Extract fields from the new payload structure
+    const eventId = raw["Event ID"];
+    const locationId = raw.location?.id || raw["Events Account ID"] || null;
+    const firstName = raw.first_name || "";
+    const lastName = raw.last_name || "";
+    const fullName = raw.full_name || `${firstName} ${lastName}`.trim();
+    const email = raw.email;
+    const phone = raw.phone || null;
+    const quantity = raw.order?.quantity || 1;
+    const total = raw.order?.amount ? raw.order.amount / 100 : 0; // amount is in cents
+    const status = "completed";
+
+    if (!eventId || !email || !fullName) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: event_id, contact.name, contact.email, quantity' }),
+        JSON.stringify({ error: 'Missing required fields: Event ID, email, full_name' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -49,7 +48,7 @@ Deno.serve(async (req) => {
     const { data: event, error: eventError } = await supabase
       .from('events')
       .select('*')
-      .eq('id', payload.event_id)
+      .eq('id', eventId)
       .single();
 
     if (eventError || !event) {
@@ -60,26 +59,26 @@ Deno.serve(async (req) => {
     }
 
     const availableSeats = event.capacity - (event.tickets_sold || 0);
-    if (payload.quantity > availableSeats) {
+    if (quantity > availableSeats) {
       return new Response(
         JSON.stringify({ 
           error: 'Not enough seats available', 
           available: availableSeats,
-          requested: payload.quantity 
+          requested: quantity 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     // Use location_id from payload, fall back to event's location_id
-    const locationId = payload.location_id || event.location_id || null;
+    const resolvedLocationId = locationId || event.location_id || null;
 
     // 2. Find or create contact
     let contactId: string;
     const { data: existingContact } = await supabase
       .from('contacts')
       .select('id')
-      .eq('email', payload.contact.email)
+      .eq('email', email)
       .maybeSingle();
 
     if (existingContact) {
@@ -88,9 +87,9 @@ Deno.serve(async (req) => {
       const { data: newContact, error: contactError } = await supabase
         .from('contacts')
         .insert({
-          name: payload.contact.name,
-          email: payload.contact.email,
-          phone: payload.contact.phone || null,
+          name: fullName,
+          email: email,
+          phone: phone,
         })
         .select('id')
         .single();
@@ -101,16 +100,16 @@ Deno.serve(async (req) => {
       contactId = newContact.id;
     }
 
-    // 3. Create order with location_id
+    // 3. Create order
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
-        event_id: payload.event_id,
+        event_id: eventId,
         contact_id: contactId,
-        quantity: payload.quantity,
-        total: payload.total || 0,
-        status: payload.status || 'completed',
-        location_id: locationId,
+        quantity: quantity,
+        total: total,
+        status: status,
+        location_id: resolvedLocationId,
       })
       .select()
       .single();
@@ -119,7 +118,7 @@ Deno.serve(async (req) => {
       throw new Error('Failed to create order');
     }
 
-    // 4. Create a new attendee for this order
+    // 4. Create attendee for this order
     const ticketNumber = `TKT-${order.id.slice(0, 8).toUpperCase()}`;
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${ticketNumber}`;
     
@@ -131,9 +130,9 @@ Deno.serve(async (req) => {
         ticket_number: ticketNumber,
         qr_code_url: qrCodeUrl,
         event_title: event.title,
-        total_tickets: payload.quantity,
+        total_tickets: quantity,
         check_in_count: 0,
-        location_id: locationId,
+        location_id: resolvedLocationId,
       })
       .select()
       .single();
@@ -145,8 +144,8 @@ Deno.serve(async (req) => {
     // 5. Update event tickets_sold count
     const { error: updateError } = await supabase
       .from('events')
-      .update({ tickets_sold: (event.tickets_sold || 0) + payload.quantity })
-      .eq('id', payload.event_id);
+      .update({ tickets_sold: (event.tickets_sold || 0) + quantity })
+      .eq('id', eventId);
 
     if (updateError) {
       throw new Error('Failed to update event seat count');
@@ -162,7 +161,7 @@ Deno.serve(async (req) => {
           quantity: order.quantity,
           total: order.total,
           status: order.status,
-          location_id: locationId,
+          location_id: resolvedLocationId,
           created_at: order.created_at,
         },
         attendee: {
@@ -171,11 +170,11 @@ Deno.serve(async (req) => {
           qr_code_url: attendeeResult.qr_code_url,
           total_tickets: attendeeResult.total_tickets,
           check_in_count: attendeeResult.check_in_count,
-          location_id: locationId,
+          location_id: resolvedLocationId,
         },
         event: {
           title: event.title,
-          remaining_seats: availableSeats - payload.quantity,
+          remaining_seats: availableSeats - quantity,
         },
       }),
       { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
