@@ -10,7 +10,6 @@ interface QrScannerProps {
 
 export function QrScanner({ onScan, enabled }: QrScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lastScannedRef = useRef<string>('');
@@ -25,52 +24,26 @@ export function QrScanner({ onScan, enabled }: QrScannerProps) {
     } catch {
       // ignore cleanup errors
     }
-    // Stop all media tracks
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
     scannerRef.current = null;
     setIsScanning(false);
     lastScannedRef.current = '';
   }, []);
 
+  // Called directly from onClick — keeps user gesture context for getUserMedia
   const startScanning = async () => {
     setError(null);
 
-    // CRITICAL: Request camera directly in click handler for mobile browser compatibility
-    let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-      });
-      streamRef.current = stream;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('NotAllowedError') || msg.includes('Permission')) {
-        setError('Camera access denied. Please allow camera permissions in your browser settings.');
-      } else if (msg.includes('NotFoundError') || msg.includes('DevicesNotFound')) {
-        setError('No camera found on this device.');
-      } else {
-        setError('Could not access camera. Please check permissions and try again.');
-      }
-      return;
-    }
-
-    // Now use the deviceId from the acquired stream to start html5-qrcode
-    try {
-      const videoTrack = stream.getVideoTracks()[0];
-      const deviceId = videoTrack.getSettings().deviceId;
-
       const scanner = new Html5Qrcode(containerId, { verbose: false });
       scannerRef.current = scanner;
 
+      // html5-qrcode calls getUserMedia internally — this works on mobile
+      // as long as it's invoked synchronously from user gesture (button click)
       await scanner.start(
-        deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment' },
+        { facingMode: 'environment' },
         {
           fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1,
+          qrbox: { width: 220, height: 220 },
         },
         (decodedText) => {
           if (decodedText !== lastScannedRef.current) {
@@ -81,16 +54,20 @@ export function QrScanner({ onScan, enabled }: QrScannerProps) {
         () => {}
       );
 
-      // Stop the initial stream since html5-qrcode creates its own
-      stream.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-
       setIsScanning(true);
     } catch (err) {
-      // If html5-qrcode fails, clean up the stream
-      stream.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-      setError('Failed to start QR scanner. Please try again.');
+      console.error('[QrScanner] Failed to start:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+
+      if (msg.includes('NotAllowedError') || msg.includes('Permission')) {
+        setError('Camera access denied. Please allow camera permissions in your browser settings.');
+      } else if (msg.includes('NotFoundError') || msg.includes('DevicesNotFound')) {
+        setError('No camera found on this device.');
+      } else if (msg.includes('NotReadableError') || msg.includes('TrackStartError')) {
+        setError('Camera is in use by another app. Please close other camera apps and try again.');
+      } else {
+        setError(`Could not start scanner: ${msg}`);
+      }
     }
   };
 
