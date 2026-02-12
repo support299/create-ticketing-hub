@@ -1,5 +1,5 @@
 import { Calendar, LayoutDashboard, Users, ShoppingCart, QrCode, Menu } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -14,7 +14,13 @@ const navItems = [
 
 export function TopNav() {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [open, setOpen] = useState(false);
+
+  const buildHref = (path: string) => {
+    const id = searchParams.get('id');
+    return id ? `${path}?id=${id}` : path;
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
@@ -28,7 +34,7 @@ export function TopNav() {
             return (
               <Link
                 key={item.href}
-                to={item.href}
+                to={buildHref(item.href)}
                 className={cn(
                   'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200',
                   isActive
@@ -59,7 +65,7 @@ export function TopNav() {
                 return (
                   <Link
                     key={item.href}
-                    to={item.href}
+                    to={buildHref(item.href)}
                     onClick={() => setOpen(false)}
                     className={cn(
                       'flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200',
