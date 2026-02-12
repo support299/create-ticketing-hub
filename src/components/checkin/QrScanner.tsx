@@ -90,46 +90,28 @@ export function QrScanner({ onScan, enabled }: QrScannerProps) {
         </>
       )}
 
-      {/* Container always in DOM so html5-qrcode can find it */}
-      <div className={isScanning ? '' : 'hidden'}>
-        <div className="relative w-full max-w-sm mx-auto aspect-square rounded-2xl overflow-hidden border-2 border-primary/30 bg-black">
-          <div id={containerId} className="absolute inset-0 [&>video]:object-cover [&>video]:w-full [&>video]:h-full" />
+      {/* 
+        html5-qrcode renders its own video + shaded region inside this div.
+        We just style it cleanly and let the library handle the viewfinder.
+        No custom overlays — they were blocking the video feed on mobile.
+      */}
+      <div
+        id={containerId}
+        className={isScanning ? 'w-full max-w-sm mx-auto rounded-2xl overflow-hidden border-2 border-primary/30' : 'hidden'}
+        style={isScanning ? { minHeight: 300 } : undefined}
+      />
 
-          {/* Viewfinder overlay */}
-          <div className="absolute inset-0 pointer-events-none z-10">
-            <div className="absolute inset-0 bg-black/40" />
-            <div
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[65%] h-[65%] rounded-lg"
-              style={{ boxShadow: '0 0 0 9999px rgba(0,0,0,0.45)' }}
-            />
-            <svg className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[65%] h-[65%]" viewBox="0 0 100 100" fill="none">
-              <path d="M 2 20 L 2 2 L 20 2" stroke="hsl(var(--primary))" strokeWidth="3" strokeLinecap="round" />
-              <path d="M 80 2 L 98 2 L 98 20" stroke="hsl(var(--primary))" strokeWidth="3" strokeLinecap="round" />
-              <path d="M 2 80 L 2 98 L 20 98" stroke="hsl(var(--primary))" strokeWidth="3" strokeLinecap="round" />
-              <path d="M 80 98 L 98 98 L 98 80" stroke="hsl(var(--primary))" strokeWidth="3" strokeLinecap="round" />
-            </svg>
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[65%] h-[65%] overflow-hidden rounded-lg">
-              <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-primary to-transparent animate-scan-line" />
-            </div>
-          </div>
-
-          <div className="absolute bottom-3 left-0 right-0 z-20 text-center">
-            <span className="text-xs text-white/80 bg-black/50 px-3 py-1 rounded-full">
-              Point camera at QR code
-            </span>
-          </div>
-        </div>
-
+      {isScanning && (
         <Button
           onClick={stopScanning}
           variant="outline"
           size="sm"
-          className="w-full gap-2 rounded-xl border-destructive/50 text-destructive hover:bg-destructive/10 mt-3"
+          className="w-full gap-2 rounded-xl border-destructive/50 text-destructive hover:bg-destructive/10"
         >
           <CameraOff className="h-4 w-4" />
           Close Scanner
         </Button>
-      </div>
+      )}
     </div>
   );
 }
