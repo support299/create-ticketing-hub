@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Order, Contact } from '@/types';
 
@@ -8,10 +8,7 @@ export function useOrders() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('orders')
-        .select(`
-          *,
-          contacts (*)
-        `)
+        .select(`*, contacts (*)`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -31,6 +28,35 @@ export function useOrders() {
           phone: row.contacts.phone || undefined,
         },
       }));
+    },
+  });
+}
+
+export function useDeleteOrder() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (orderId: string) => {
+      // First delete related attendees
+      const { error: attendeeError } = await supabase
+        .from('attendees')
+        .delete()
+        .eq('order_id', orderId);
+
+      if (attendeeError) throw attendeeError;
+
+      // Then delete the order
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['attendees'] });
+      queryClient.invalidateQueries({ queryKey: ['events'] });
     },
   });
 }

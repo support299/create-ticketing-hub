@@ -1,74 +1,94 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Attendee, Contact } from '@/types';
 
+function mapAttendeeRow(row: any): Attendee & { contact: Contact } {
+  return {
+    id: row.id,
+    orderId: row.order_id,
+    contactId: row.contact_id,
+    ticketNumber: row.ticket_number,
+    qrCodeUrl: row.qr_code_url || '',
+    checkedInAt: row.checked_in_at,
+    eventTitle: row.event_title,
+    totalTickets: row.total_tickets,
+    checkInCount: row.check_in_count,
+    contact: {
+      id: row.contacts.id,
+      name: row.contacts.name,
+      email: row.contacts.email,
+      phone: row.contacts.phone || undefined,
+    },
+  };
+}
+
 export function useAttendees() {
+  const queryClient = useQueryClient();
+
+  // Subscribe to realtime changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('attendees-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'attendees' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['attendees'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   return useQuery({
     queryKey: ['attendees'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('attendees')
-        .select(`
-          *,
-          contacts (*)
-        `)
+        .select(`*, contacts (*)`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-
-      return data.map((row): Attendee & { contact: Contact } => ({
-        id: row.id,
-        orderId: row.order_id,
-        contactId: row.contact_id,
-        ticketNumber: row.ticket_number,
-        qrCodeUrl: row.qr_code_url || '',
-        checkedInAt: row.checked_in_at,
-        eventTitle: row.event_title,
-        totalTickets: row.total_tickets,
-        checkInCount: row.check_in_count,
-        contact: {
-          id: row.contacts.id,
-          name: row.contacts.name,
-          email: row.contacts.email,
-          phone: row.contacts.phone || undefined,
-        },
-      }));
+      return data.map(mapAttendeeRow);
     },
   });
 }
 
 export function useAttendeesByEvent(eventTitle: string) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`attendees-event-${eventTitle}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'attendees' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['attendees', 'event', eventTitle] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient, eventTitle]);
+
   return useQuery({
     queryKey: ['attendees', 'event', eventTitle],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('attendees')
-        .select(`
-          *,
-          contacts (*)
-        `)
+        .select(`*, contacts (*)`)
         .eq('event_title', eventTitle)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-
-      return data.map((row): Attendee & { contact: Contact } => ({
-        id: row.id,
-        orderId: row.order_id,
-        contactId: row.contact_id,
-        ticketNumber: row.ticket_number,
-        qrCodeUrl: row.qr_code_url || '',
-        checkedInAt: row.checked_in_at,
-        eventTitle: row.event_title,
-        totalTickets: row.total_tickets,
-        checkInCount: row.check_in_count,
-        contact: {
-          id: row.contacts.id,
-          name: row.contacts.name,
-          email: row.contacts.email,
-          phone: row.contacts.phone || undefined,
-        },
-      }));
+      return data.map(mapAttendeeRow);
     },
     enabled: !!eventTitle,
   });
@@ -79,7 +99,6 @@ export function useCheckInAttendee() {
 
   return useMutation({
     mutationFn: async (attendeeId: string) => {
-      // First get current check-in count
       const { data: attendee, error: fetchError } = await supabase
         .from('attendees')
         .select('check_in_count, total_tickets')
@@ -113,7 +132,6 @@ export function useCheckOutAttendee() {
 
   return useMutation({
     mutationFn: async (attendeeId: string) => {
-      // First get current check-in count
       const { data: attendee, error: fetchError } = await supabase
         .from('attendees')
         .select('check_in_count')
@@ -148,33 +166,14 @@ export function useFindAttendeeByTicket() {
     mutationFn: async (ticketNumber: string) => {
       const { data, error } = await supabase
         .from('attendees')
-        .select(`
-          *,
-          contacts (*)
-        `)
+        .select(`*, contacts (*)`)
         .ilike('ticket_number', ticketNumber)
         .maybeSingle();
 
       if (error) throw error;
       if (!data) return null;
 
-      return {
-        id: data.id,
-        orderId: data.order_id,
-        contactId: data.contact_id,
-        ticketNumber: data.ticket_number,
-        qrCodeUrl: data.qr_code_url || '',
-        checkedInAt: data.checked_in_at,
-        eventTitle: data.event_title,
-        totalTickets: data.total_tickets,
-        checkInCount: data.check_in_count,
-        contact: {
-          id: data.contacts.id,
-          name: data.contacts.name,
-          email: data.contacts.email,
-          phone: data.contacts.phone || undefined,
-        },
-      } as Attendee & { contact: Contact };
+      return mapAttendeeRow(data);
     },
   });
 }
