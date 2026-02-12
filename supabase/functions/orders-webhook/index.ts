@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
     const email = raw.email;
     const phone = raw.phone || null;
     const quantity = raw.order?.quantity || 1;
-    const total = raw.order?.amount ? raw.order.amount / 100 : 0; // amount is in cents
+    const total = raw.order?.amount || 0; // amount is already in dollars
     const status = "completed";
 
     if (!eventId || !email || !fullName) {
