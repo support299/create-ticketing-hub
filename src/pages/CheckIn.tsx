@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { QrCode, Check, X, Search, User, Ticket } from 'lucide-react';
+import { QrCode, Check, X, Search, User, Ticket, Camera } from 'lucide-react';
 import { useFindAttendeeByTicket, useCheckInAttendee } from '@/hooks/useAttendees';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
