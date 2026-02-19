@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Attendee, Contact } from '@/types';
+import { confirmContactOnCheckIn, splitName } from '@/lib/confirmContact';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -169,6 +170,17 @@ function SeatCheckInDialog({
         checkInAttendee.mutate(attendee.id, {
           onSuccess: () => {
             const seat = seats.find(s => s.id === seatId);
+            const seatEmail = seat?.isMinor ? (seat?.guardianEmail || '') : (seat?.email || '');
+            const seatPhone = seat?.isMinor ? (seat?.guardianPhone || '') : (seat?.phone || '');
+            const { firstName, lastName } = splitName(seat?.name || '');
+            confirmContactOnCheckIn({
+              email: seatEmail,
+              firstName,
+              lastName,
+              phone: seatPhone,
+              eventName: attendee.eventTitle,
+              locationId: attendee.locationId || '',
+            });
             toast.success('Check-in complete!', {
               description: `${seat?.name || 'Attendee'} has been checked in.`,
             });
@@ -211,6 +223,17 @@ function SeatCheckInDialog({
             onSuccess: () => {
               checkInAttendee.mutate(attendee.id, {
                 onSuccess: () => {
+                  const email = assignForm.isMinor ? assignForm.guardianEmail : assignForm.email;
+                  const phone = assignForm.isMinor ? assignForm.guardianPhone : assignForm.phone;
+                  const { firstName, lastName } = splitName(assignForm.name);
+                  confirmContactOnCheckIn({
+                    email,
+                    firstName,
+                    lastName,
+                    phone,
+                    eventName: attendee.eventTitle,
+                    locationId: attendee.locationId || '',
+                  });
                   toast.success('Check-in complete!', {
                     description: `${assignForm.name} has been checked in.`,
                   });

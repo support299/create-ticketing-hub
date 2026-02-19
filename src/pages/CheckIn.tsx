@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Attendee, Contact } from '@/types';
 import { QrScanner } from '@/components/checkin/QrScanner';
+import { confirmContactOnCheckIn, splitName } from '@/lib/confirmContact';
 
 interface CheckInResult {
   success: boolean;
@@ -92,6 +93,17 @@ export default function CheckIn() {
         checkInMutation.mutate(result.attendee!.id, {
           onSuccess: () => {
             const seat = seats.find(s => s.id === selectedSeatId);
+            const seatEmail = seat?.isMinor ? (seat?.guardianEmail || '') : (seat?.email || '');
+            const seatPhone = seat?.isMinor ? (seat?.guardianPhone || '') : (seat?.phone || '');
+            const { firstName, lastName } = splitName(seat?.name || '');
+            confirmContactOnCheckIn({
+              email: seatEmail,
+              firstName,
+              lastName,
+              phone: seatPhone,
+              eventName: result.attendee!.eventTitle,
+              locationId: result.attendee!.locationId || '',
+            });
             toast.success('Check-in complete!', {
               description: `${seat?.name || 'Attendee'} has been checked in.`,
             });
@@ -387,6 +399,17 @@ export default function CheckIn() {
                                             onSuccess: () => {
                                               checkInMutation.mutate(result!.attendee!.id, {
                                                 onSuccess: () => {
+                                                  const email = assignForm.isMinor ? assignForm.guardianEmail : assignForm.email;
+                                                  const phone = assignForm.isMinor ? assignForm.guardianPhone : assignForm.phone;
+                                                  const { firstName, lastName } = splitName(assignForm.name);
+                                                  confirmContactOnCheckIn({
+                                                    email,
+                                                    firstName,
+                                                    lastName,
+                                                    phone,
+                                                    eventName: result!.attendee!.eventTitle,
+                                                    locationId: result!.attendee!.locationId || '',
+                                                  });
                                                   toast.success('Check-in complete!', {
                                                     description: `${assignForm.name} has been checked in.`,
                                                   });

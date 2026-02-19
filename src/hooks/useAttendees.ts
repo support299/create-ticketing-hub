@@ -15,6 +15,7 @@ function mapAttendeeRow(row: any): Attendee & { contact: Contact } {
     eventTitle: row.event_title,
     totalTickets: row.total_tickets,
     checkInCount: row.check_in_count,
+    locationId: row.location_id || null,
     contact: {
       id: row.contacts.id,
       name: row.contacts.name,

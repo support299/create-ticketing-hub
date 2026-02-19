@@ -43,6 +43,7 @@ export interface Attendee {
   eventTitle: string;
   totalTickets: number;
   checkInCount: number;
+  locationId?: string | null;
 }
 
 export interface SalesData {
