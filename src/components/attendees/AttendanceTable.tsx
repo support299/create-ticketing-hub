@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useCheckInSeat, useCheckOutSeat } from '@/hooks/useSeatAssignments';
 import { useCheckInAttendee, useCheckOutAttendee } from '@/hooks/useAttendees';
 
@@ -36,6 +46,11 @@ interface AttendanceRecord {
 interface AttendanceTableProps {
   searchQuery?: string;
 }
+
+type ConfirmAction = {
+  type: 'checkin' | 'checkout' | 'unassign';
+  record: AttendanceRecord;
+};
 
 function useAttendanceRecords() {
   return useQuery({
@@ -109,6 +124,24 @@ function useUnassignSeat() {
   });
 }
 
+const confirmMessages: Record<ConfirmAction['type'], { title: string; description: (name: string) => string; action: string }> = {
+  checkin: {
+    title: 'Confirm Check-In',
+    description: (name) => `Are you sure you want to check in ${name}?`,
+    action: 'Check In',
+  },
+  checkout: {
+    title: 'Confirm Check-Out',
+    description: (name) => `Are you sure you want to check out ${name}?`,
+    action: 'Check Out',
+  },
+  unassign: {
+    title: 'Confirm Unassign',
+    description: (name) => `Are you sure you want to unassign ${name} from this seat? This will remove their details and check-in status.`,
+    action: 'Unassign',
+  },
+};
+
 export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
   const { data: records = [], isLoading } = useAttendanceRecords();
   const checkInSeat = useCheckInSeat();
@@ -117,6 +150,7 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
   const checkOutAttendee = useCheckOutAttendee();
   const unassignSeat = useUnassignSeat();
   const queryClient = useQueryClient();
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
 
   const filteredRecords = useMemo(() => {
     if (!searchQuery) return records;
@@ -131,47 +165,43 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
     );
   }, [records, searchQuery]);
 
-  const handleCheckIn = (record: AttendanceRecord) => {
-    checkInSeat.mutate(record.seatId, {
-      onSuccess: () => {
-        checkInAttendee.mutate(record.attendeeId, {
-          onSuccess: () => {
-            toast.success('Checked in successfully', {
-              description: `${record.name} has been checked in.`,
-            });
-            queryClient.invalidateQueries({ queryKey: ['attendance_records'] });
-          },
-        });
-      },
-      onError: () => toast.error('Failed to check in'),
-    });
-  };
+  const handleConfirm = () => {
+    if (!confirmAction) return;
+    const { type, record } = confirmAction;
+    setConfirmAction(null);
 
-  const handleCheckOut = (record: AttendanceRecord) => {
-    checkOutSeat.mutate(record.seatId, {
-      onSuccess: () => {
-        checkOutAttendee.mutate(record.attendeeId, {
-          onSuccess: () => {
-            toast.success('Checked out successfully', {
-              description: `${record.name} has been checked out.`,
-            });
-            queryClient.invalidateQueries({ queryKey: ['attendance_records'] });
-          },
-        });
-      },
-      onError: () => toast.error('Failed to check out'),
-    });
-  };
-
-  const handleUnassign = (record: AttendanceRecord) => {
-    unassignSeat.mutate(record.seatId, {
-      onSuccess: () => {
-        toast.success('Seat unassigned', {
-          description: `${record.name} has been removed from the seat.`,
-        });
-      },
-      onError: () => toast.error('Failed to unassign seat'),
-    });
+    if (type === 'checkin') {
+      checkInSeat.mutate(record.seatId, {
+        onSuccess: () => {
+          checkInAttendee.mutate(record.attendeeId, {
+            onSuccess: () => {
+              toast.success('Checked in successfully', { description: `${record.name} has been checked in.` });
+              queryClient.invalidateQueries({ queryKey: ['attendance_records'] });
+            },
+          });
+        },
+        onError: () => toast.error('Failed to check in'),
+      });
+    } else if (type === 'checkout') {
+      checkOutSeat.mutate(record.seatId, {
+        onSuccess: () => {
+          checkOutAttendee.mutate(record.attendeeId, {
+            onSuccess: () => {
+              toast.success('Checked out successfully', { description: `${record.name} has been checked out.` });
+              queryClient.invalidateQueries({ queryKey: ['attendance_records'] });
+            },
+          });
+        },
+        onError: () => toast.error('Failed to check out'),
+      });
+    } else if (type === 'unassign') {
+      unassignSeat.mutate(record.seatId, {
+        onSuccess: () => {
+          toast.success('Seat unassigned', { description: `${record.name} has been removed from the seat.` });
+        },
+        onError: () => toast.error('Failed to unassign seat'),
+      });
+    }
   };
 
   if (isLoading) {
@@ -192,90 +222,111 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
     );
   }
 
+  const msg = confirmAction ? confirmMessages[confirmAction.type] : null;
+
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-muted/50">
-            <TableHead className="font-display">Ticket #</TableHead>
-            <TableHead className="font-display">Name</TableHead>
-            <TableHead className="font-display">Email</TableHead>
-            <TableHead className="font-display">Phone</TableHead>
-            <TableHead className="font-display">Event</TableHead>
-            <TableHead className="font-display">Main Purchaser</TableHead>
-            <TableHead className="font-display">Status</TableHead>
-            <TableHead className="font-display">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filteredRecords.map((record) => (
-            <TableRow key={record.seatId} className="hover:bg-muted/30 transition-colors">
-              <TableCell className="font-mono text-sm">{record.ticketNumber}</TableCell>
-              <TableCell className="font-medium">{record.name}</TableCell>
-              <TableCell className="text-sm">{record.email}</TableCell>
-              <TableCell className="text-sm">{record.phone || '—'}</TableCell>
-              <TableCell className="max-w-[200px] truncate">{record.eventTitle}</TableCell>
-              <TableCell className="text-sm">{record.mainPurchaser}</TableCell>
-              <TableCell>
-                {record.checkedInAt ? (
-                  <Badge variant="default" className="bg-green-600 hover:bg-green-600 text-white">Checked In</Badge>
-                ) : (
-                  <Badge variant="secondary">Not Checked In</Badge>
-                )}
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1">
-                  {record.checkedInAt ? (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-warning hover:text-warning hover:bg-warning/10"
-                          onClick={() => handleCheckOut(record)}
-                          disabled={checkOutSeat.isPending}
-                        >
-                          <Undo2 className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Check Out</TooltipContent>
-                    </Tooltip>
-                  ) : (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-success hover:text-success hover:bg-success/10"
-                          onClick={() => handleCheckIn(record)}
-                          disabled={checkInSeat.isPending}
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Check In</TooltipContent>
-                    </Tooltip>
-                  )}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => handleUnassign(record)}
-                        disabled={unassignSeat.isPending}
-                      >
-                        <UserX className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Unassign Seat</TooltipContent>
-                  </Tooltip>
-                </div>
-              </TableCell>
+    <>
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead className="font-display">Ticket #</TableHead>
+              <TableHead className="font-display">Name</TableHead>
+              <TableHead className="font-display">Email</TableHead>
+              <TableHead className="font-display">Phone</TableHead>
+              <TableHead className="font-display">Event</TableHead>
+              <TableHead className="font-display">Main Purchaser</TableHead>
+              <TableHead className="font-display">Status</TableHead>
+              <TableHead className="font-display">Actions</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+          </TableHeader>
+          <TableBody>
+            {filteredRecords.map((record) => (
+              <TableRow key={record.seatId} className="hover:bg-muted/30 transition-colors">
+                <TableCell className="font-mono text-sm">{record.ticketNumber}</TableCell>
+                <TableCell className="font-medium">{record.name}</TableCell>
+                <TableCell className="text-sm">{record.email}</TableCell>
+                <TableCell className="text-sm">{record.phone || '—'}</TableCell>
+                <TableCell className="max-w-[200px] truncate">{record.eventTitle}</TableCell>
+                <TableCell className="text-sm">{record.mainPurchaser}</TableCell>
+                <TableCell>
+                  {record.checkedInAt ? (
+                    <Badge variant="default" className="bg-green-600 hover:bg-green-600 text-white">Checked In</Badge>
+                  ) : (
+                    <Badge variant="secondary">Not Checked In</Badge>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    {record.checkedInAt ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-warning hover:text-warning hover:bg-warning/10"
+                            onClick={() => setConfirmAction({ type: 'checkout', record })}
+                            disabled={checkOutSeat.isPending}
+                          >
+                            <Undo2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Check Out</TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-success hover:text-success hover:bg-success/10"
+                            onClick={() => setConfirmAction({ type: 'checkin', record })}
+                            disabled={checkInSeat.isPending}
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Check In</TooltipContent>
+                      </Tooltip>
+                    )}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setConfirmAction({ type: 'unassign', record })}
+                          disabled={unassignSeat.isPending}
+                        >
+                          <UserX className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Unassign Seat</TooltipContent>
+                    </Tooltip>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <AlertDialog open={!!confirmAction} onOpenChange={(open) => { if (!open) setConfirmAction(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{msg?.title}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {msg?.description(confirmAction?.record.name || '')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirm}>
+              {msg?.action}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
