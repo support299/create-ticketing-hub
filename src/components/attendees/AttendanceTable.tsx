@@ -263,7 +263,7 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
                   <div className="flex items-center gap-1.5">
                     {record.name}
                     {record.isMinor && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/40 text-amber-600 dark:text-amber-400">Minor</Badge>
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/40 text-amber-600 dark:text-amber-400">Child</Badge>
                     )}
                   </div>
                 </TableCell>
@@ -375,7 +375,7 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
           </DialogHeader>
           <div className="space-y-3 pt-2">
             <div>
-              <p className="text-xs text-muted-foreground">Minor</p>
+              <p className="text-xs text-muted-foreground">Child</p>
               <p className="font-medium">{guardianRecord?.name}</p>
             </div>
             <div>
