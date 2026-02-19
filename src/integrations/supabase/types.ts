@@ -203,7 +203,11 @@ export type Database = {
           checked_in_at: string | null
           created_at: string
           email: string | null
+          guardian_email: string | null
+          guardian_name: string | null
+          guardian_phone: string | null
           id: string
+          is_minor: boolean
           name: string | null
           phone: string | null
           seat_number: number
@@ -214,7 +218,11 @@ export type Database = {
           checked_in_at?: string | null
           created_at?: string
           email?: string | null
+          guardian_email?: string | null
+          guardian_name?: string | null
+          guardian_phone?: string | null
           id?: string
+          is_minor?: boolean
           name?: string | null
           phone?: string | null
           seat_number: number
@@ -225,7 +233,11 @@ export type Database = {
           checked_in_at?: string | null
           created_at?: string
           email?: string | null
+          guardian_email?: string | null
+          guardian_name?: string | null
+          guardian_phone?: string | null
           id?: string
+          is_minor?: boolean
           name?: string | null
           phone?: string | null
           seat_number?: number
