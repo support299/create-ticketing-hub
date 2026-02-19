@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { QrCode, Check, X, Search, User, Ticket, Loader2 } from 'lucide-react';
 import { useFindAttendeeByTicket, useCheckInAttendee } from '@/hooks/useAttendees';
-import { useSeatAssignmentsByAttendee, useCheckInSeat } from '@/hooks/useSeatAssignments';
+import { useSeatAssignmentsByAttendee, useCheckInSeat, useUpdateSeatAssignment } from '@/hooks/useSeatAssignments';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Attendee, Contact } from '@/types';
@@ -20,10 +21,13 @@ export default function CheckIn() {
   const [ticketNumber, setTicketNumber] = useState('');
   const [result, setResult] = useState<CheckInResult | null>(null);
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [assignForm, setAssignForm] = useState({ name: '', email: '', phone: '' });
 
   const findAttendee = useFindAttendeeByTicket();
   const checkInMutation = useCheckInAttendee();
   const checkInSeat = useCheckInSeat();
+  const updateSeat = useUpdateSeatAssignment();
 
   // Fetch seat assignments when we have an attendee
   const { data: seats = [], isLoading: seatsLoading } = useSeatAssignmentsByAttendee(
@@ -237,13 +241,105 @@ export default function CheckIn() {
                         </div>
                       )}
 
-                      {!seatsLoading && availableSeats.length === 0 && unassignedSeats.length > 0 && (
-                        <div className="rounded-xl border border-warning/50 bg-warning/10 p-4 text-center">
-                          <p className="text-sm font-medium text-warning">
-                            No attendees assigned yet. Please assign attendees to seats first.
-                          </p>
+                      {/* Unassigned seats - allow inline assign & check in */}
+                      {unassignedSeats.map((seat) => (
+                        <div key={seat.id} className="rounded-xl border border-dashed border-border p-4">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground text-sm font-bold">
+                                {seat.seatNumber}
+                              </div>
+                              <p className="text-sm text-muted-foreground italic">Unassigned</p>
+                            </div>
+                            {assigningId !== seat.id && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setAssigningId(seat.id);
+                                  setSelectedSeatId(null);
+                                  setAssignForm({ name: '', email: '', phone: '' });
+                                }}
+                              >
+                                Assign & Check In
+                              </Button>
+                            )}
+                          </div>
+                          {assigningId === seat.id && (
+                            <div className="space-y-3 mt-3 pt-3 border-t border-border">
+                              <div>
+                                <Label className="text-xs">Name *</Label>
+                                <Input
+                                  value={assignForm.name}
+                                  onChange={(e) => setAssignForm(f => ({ ...f, name: e.target.value }))}
+                                  placeholder="Full name"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Email *</Label>
+                                <Input
+                                  type="email"
+                                  value={assignForm.email}
+                                  onChange={(e) => setAssignForm(f => ({ ...f, email: e.target.value }))}
+                                  placeholder="email@example.com"
+                                />
+                              </div>
+                              <div>
+                                <Label className="text-xs">Phone</Label>
+                                <Input
+                                  value={assignForm.phone}
+                                  onChange={(e) => setAssignForm(f => ({ ...f, phone: e.target.value }))}
+                                  placeholder="Phone number"
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    if (!assignForm.name || !assignForm.email) {
+                                      toast.error('Name and email are required');
+                                      return;
+                                    }
+                                    updateSeat.mutate(
+                                      { id: seat.id, name: assignForm.name, email: assignForm.email, phone: assignForm.phone },
+                                      {
+                                        onSuccess: () => {
+                                          // Now check in the seat
+                                          checkInSeat.mutate(seat.id, {
+                                            onSuccess: () => {
+                                              checkInMutation.mutate(result!.attendee!.id, {
+                                                onSuccess: () => {
+                                                  toast.success('Check-in complete!', {
+                                                    description: `${assignForm.name} has been checked in.`,
+                                                  });
+                                                  setResult(null);
+                                                  setTicketNumber('');
+                                                  setSelectedSeatId(null);
+                                                  setAssigningId(null);
+                                                  setAssignForm({ name: '', email: '', phone: '' });
+                                                },
+                                              });
+                                            },
+                                            onError: () => toast.error('Failed to check in seat'),
+                                          });
+                                        },
+                                        onError: () => toast.error('Failed to assign seat'),
+                                      }
+                                    );
+                                  }}
+                                  disabled={updateSeat.isPending || checkInSeat.isPending}
+                                >
+                                  <Check className="h-3.5 w-3.5 mr-1" />
+                                  Confirm
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => setAssigningId(null)}>
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      )}
+                      ))}
 
                       {!seatsLoading && availableSeats.length === 0 && unassignedSeats.length === 0 && (
                         <div className="rounded-xl border border-muted bg-muted/50 p-4 text-center">

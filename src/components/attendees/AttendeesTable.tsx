@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { Attendee, Contact } from '@/types';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
-import { Check, QrCode, Mail, Undo2 } from 'lucide-react';
+import { Check, QrCode, Undo2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 import {
   Table,
   TableBody,
@@ -23,6 +26,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  useSeatAssignmentsByAttendee,
+  useCheckInSeat,
+  useUpdateSeatAssignment,
+  SeatAssignment,
+} from '@/hooks/useSeatAssignments';
+import { useCheckInAttendee } from '@/hooks/useAttendees';
 
 interface AttendeesTableProps {
   attendees: (Attendee & { contact: Contact })[];
@@ -30,14 +40,224 @@ interface AttendeesTableProps {
   onCheckOut?: (attendeeId: string) => void;
 }
 
-export function AttendeesTable({ attendees, onCheckIn, onCheckOut }: AttendeesTableProps) {
-  const [selectedAttendee, setSelectedAttendee] = useState<(Attendee & { contact: Contact }) | null>(null);
+function SeatCheckInDialog({
+  attendee,
+  open,
+  onOpenChange,
+}: {
+  attendee: Attendee & { contact: Contact };
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { data: seats = [], isLoading } = useSeatAssignmentsByAttendee(open ? attendee.id : undefined);
+  const checkInSeat = useCheckInSeat();
+  const checkInAttendee = useCheckInAttendee();
+  const updateSeat = useUpdateSeatAssignment();
+  const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [assignForm, setAssignForm] = useState({ name: '', email: '', phone: '' });
 
-  const handleSendTicket = (attendee: Attendee & { contact: Contact }) => {
-    toast.success(`Ticket sent to ${attendee.contact.email}`, {
-      description: `Ticket ${attendee.ticketNumber} has been emailed.`,
+  const availableSeats = seats.filter(s => s.name && !s.checkedInAt);
+  const unassignedSeats = seats.filter(s => !s.name && !s.checkedInAt);
+  const checkedInSeats = seats.filter(s => !!s.checkedInAt);
+
+  const handleCheckInSeat = (seatId: string) => {
+    checkInSeat.mutate(seatId, {
+      onSuccess: () => {
+        checkInAttendee.mutate(attendee.id, {
+          onSuccess: () => {
+            const seat = seats.find(s => s.id === seatId);
+            toast.success('Check-in complete!', {
+              description: `${seat?.name || 'Attendee'} has been checked in.`,
+            });
+            setSelectedSeatId(null);
+            onOpenChange(false);
+          },
+        });
+      },
+      onError: () => toast.error('Failed to check in seat'),
     });
   };
+
+  const handleAssignAndCheckIn = (seatId: string) => {
+    if (!assignForm.name || !assignForm.email) {
+      toast.error('Name and email are required');
+      return;
+    }
+    updateSeat.mutate(
+      { id: seatId, name: assignForm.name, email: assignForm.email, phone: assignForm.phone },
+      {
+        onSuccess: () => {
+          handleCheckInSeat(seatId);
+          setAssigningId(null);
+          setAssignForm({ name: '', email: '', phone: '' });
+        },
+        onError: () => toast.error('Failed to assign seat'),
+      }
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="font-display">Select Attendee to Check In</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <p className="text-sm text-muted-foreground">
+            {attendee.contact.name} — {attendee.ticketNumber} ({attendee.checkInCount}/{attendee.totalTickets} checked in)
+          </p>
+
+          {isLoading && (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {/* Assigned seats available for check-in */}
+          {availableSeats.map((seat) => (
+            <button
+              key={seat.id}
+              onClick={() => {
+                setSelectedSeatId(seat.id);
+                setAssigningId(null);
+              }}
+              className={cn(
+                'w-full rounded-xl border p-4 text-left transition-all',
+                selectedSeatId === seat.id
+                  ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
+                  : 'border-border bg-card hover:border-primary/50'
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  'flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold',
+                  selectedSeatId === seat.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                )}>
+                  {seat.seatNumber}
+                </div>
+                <div>
+                  <p className="font-medium">{seat.name}</p>
+                  <p className="text-xs text-muted-foreground">{seat.email}</p>
+                </div>
+              </div>
+            </button>
+          ))}
+
+          {/* Unassigned seats */}
+          {unassignedSeats.map((seat) => (
+            <div key={seat.id} className="rounded-xl border border-dashed border-border p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground text-sm font-bold">
+                    {seat.seatNumber}
+                  </div>
+                  <p className="text-sm text-muted-foreground italic">Unassigned</p>
+                </div>
+                {assigningId !== seat.id && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setAssigningId(seat.id);
+                      setSelectedSeatId(null);
+                      setAssignForm({ name: '', email: '', phone: '' });
+                    }}
+                  >
+                    Assign & Check In
+                  </Button>
+                )}
+              </div>
+              {assigningId === seat.id && (
+                <div className="space-y-3 mt-3 pt-3 border-t border-border">
+                  <div>
+                    <Label className="text-xs">Name *</Label>
+                    <Input
+                      value={assignForm.name}
+                      onChange={(e) => setAssignForm(f => ({ ...f, name: e.target.value }))}
+                      placeholder="Full name"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Email *</Label>
+                    <Input
+                      type="email"
+                      value={assignForm.email}
+                      onChange={(e) => setAssignForm(f => ({ ...f, email: e.target.value }))}
+                      placeholder="email@example.com"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Phone</Label>
+                    <Input
+                      value={assignForm.phone}
+                      onChange={(e) => setAssignForm(f => ({ ...f, phone: e.target.value }))}
+                      placeholder="Phone number"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleAssignAndCheckIn(seat.id)}
+                      disabled={updateSeat.isPending || checkInSeat.isPending}
+                    >
+                      <Check className="h-3.5 w-3.5 mr-1" />
+                      Confirm
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setAssigningId(null)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Already checked in */}
+          {checkedInSeats.length > 0 && (
+            <div className="mt-2">
+              <p className="text-xs text-muted-foreground mb-2">Already checked in:</p>
+              {checkedInSeats.map((seat) => (
+                <div key={seat.id} className="rounded-xl border border-success/30 bg-success/5 p-3 mb-2 flex items-center gap-3 opacity-60">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-success/20 text-success text-xs font-bold">
+                    <Check className="h-3.5 w-3.5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{seat.name}</p>
+                    <p className="text-xs text-muted-foreground">{seat.email}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Check-in button for selected assigned seat */}
+          {selectedSeatId && (
+            <Button
+              onClick={() => handleCheckInSeat(selectedSeatId)}
+              disabled={checkInSeat.isPending || checkInAttendee.isPending}
+              size="lg"
+              className="w-full gradient-primary glow-primary h-12"
+            >
+              <Check className="h-5 w-5 mr-2" />
+              {checkInSeat.isPending ? 'Checking in...' : 'Confirm Check-In'}
+            </Button>
+          )}
+
+          {!isLoading && availableSeats.length === 0 && unassignedSeats.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-2">
+              All seats have been checked in.
+            </p>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function AttendeesTable({ attendees, onCheckIn, onCheckOut }: AttendeesTableProps) {
+  const [selectedAttendee, setSelectedAttendee] = useState<(Attendee & { contact: Contact }) | null>(null);
+  const [checkInAttendee, setCheckInAttendee] = useState<(Attendee & { contact: Contact }) | null>(null);
 
   const getCheckInStatus = (attendee: Attendee) => {
     if (attendee.checkInCount === 0) return 'not-checked-in';
@@ -97,14 +317,14 @@ export function AttendeesTable({ attendees, onCheckIn, onCheckOut }: AttendeesTa
                         </TooltipTrigger>
                         <TooltipContent>View QR Code</TooltipContent>
                       </Tooltip>
-                      {canCheckIn && onCheckIn && (
+                      {canCheckIn && (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
                               variant="ghost"
                               size="sm"
                               className="text-success hover:text-success hover:bg-success/10"
-                              onClick={() => onCheckIn(attendee.id)}
+                              onClick={() => setCheckInAttendee(attendee)}
                             >
                               <Check className="h-4 w-4" />
                             </Button>
@@ -161,6 +381,15 @@ export function AttendeesTable({ attendees, onCheckIn, onCheckOut }: AttendeesTa
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Seat Check-In Dialog */}
+      {checkInAttendee && (
+        <SeatCheckInDialog
+          attendee={checkInAttendee}
+          open={!!checkInAttendee}
+          onOpenChange={(open) => { if (!open) setCheckInAttendee(null); }}
+        />
+      )}
     </>
   );
 }
