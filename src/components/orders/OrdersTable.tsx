@@ -1,4 +1,5 @@
-import { ExternalLink, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Order, Contact } from '@/types';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useEvents } from '@/hooks/useEvents';
@@ -6,11 +7,6 @@ import { useDeleteOrder } from '@/hooks/useOrders';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -96,22 +92,17 @@ export function OrdersTable({ orders }: OrdersTableProps) {
               <TableCell className="text-muted-foreground">
                 {format(new Date(order.createdAt), 'MMM d, yyyy')}
               </TableCell>
-              <TableCell>
-                <a
-                  href={`https://ticket.trysaasyway.com/orders/${order.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+               <TableCell>
+                <Link to={`/orders/${order.id}`}>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="gap-1.5 text-primary"
                   >
-                    <ExternalLink className="h-3.5 w-3.5" />
                     Assign Seats
                   </Button>
-                </a>
-              </TableCell>
+                </Link>
+               </TableCell>
               <TableCell>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
