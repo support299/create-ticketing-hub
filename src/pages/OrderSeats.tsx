@@ -159,7 +159,12 @@ export default function OrderSeats() {
             Please provide the name, email, and phone for each ticket holder.
           </p>
 
-          {seats.map((seat) => {
+          {[...seats].sort((a, b) => {
+            const aAssigned = !!a.name && !!a.email;
+            const bAssigned = !!b.name && !!b.email;
+            if (aAssigned === bAssigned) return a.seatNumber - b.seatNumber;
+            return aAssigned ? 1 : -1;
+          }).map((seat) => {
             const form = getFormValue(seat.id, seat);
             const isAssigned = !!seat.name && !!seat.email;
             const isDirty = !!editingForms[seat.id];
@@ -179,46 +184,51 @@ export default function OrderSeats() {
                       {isAssigned ? <Check className="h-4 w-4" /> : seat.seatNumber}
                     </div>
                     <span className="font-medium">Seat {seat.seatNumber}</span>
+                    {isAssigned && !isDirty && (
+                      <span className="text-xs text-muted-foreground">— {seat.name}</span>
+                    )}
                   </div>
                   {isAssigned && !isDirty && (
                     <span className="text-xs text-success font-medium">Assigned</span>
                   )}
                 </div>
 
-                <div className="grid gap-3">
-                  <div>
-                    <Label className="text-xs flex items-center gap-1.5 mb-1.5">
-                      <User className="h-3 w-3" /> Full Name *
-                    </Label>
-                    <Input
-                      placeholder="John Doe"
-                      value={form.name}
-                      onChange={(e) => setFormValue(seat.id, 'name', e.target.value)}
-                    />
+                {(!isAssigned || isDirty) && (
+                  <div className="grid gap-3">
+                    <div>
+                      <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                        <User className="h-3 w-3" /> Full Name *
+                      </Label>
+                      <Input
+                        placeholder="John Doe"
+                        value={form.name}
+                        onChange={(e) => setFormValue(seat.id, 'name', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                        <Mail className="h-3 w-3" /> Email *
+                      </Label>
+                      <Input
+                        type="email"
+                        placeholder="john@example.com"
+                        value={form.email}
+                        onChange={(e) => setFormValue(seat.id, 'email', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                        <Phone className="h-3 w-3" /> Phone
+                      </Label>
+                      <Input
+                        type="tel"
+                        placeholder="+1234567890"
+                        value={form.phone}
+                        onChange={(e) => setFormValue(seat.id, 'phone', e.target.value)}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <Label className="text-xs flex items-center gap-1.5 mb-1.5">
-                      <Mail className="h-3 w-3" /> Email *
-                    </Label>
-                    <Input
-                      type="email"
-                      placeholder="john@example.com"
-                      value={form.email}
-                      onChange={(e) => setFormValue(seat.id, 'email', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label className="text-xs flex items-center gap-1.5 mb-1.5">
-                      <Phone className="h-3 w-3" /> Phone
-                    </Label>
-                    <Input
-                      type="tel"
-                      placeholder="+1234567890"
-                      value={form.phone}
-                      onChange={(e) => setFormValue(seat.id, 'phone', e.target.value)}
-                    />
-                  </div>
-                </div>
+                )}
 
                 {isDirty && (
                   <Button
