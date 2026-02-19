@@ -6,13 +6,18 @@ import { useSeatAssignmentsByOrder, useUpdateSeatAssignment } from '@/hooks/useS
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Check, Ticket, User, Mail, Phone, Loader2 } from 'lucide-react';
+import { Check, Ticket, User, Mail, Phone, Loader2, ShieldCheck } from 'lucide-react';
 
 interface SeatForm {
   name: string;
   email: string;
   phone: string;
+  isMinor: boolean;
+  guardianName: string;
+  guardianEmail: string;
+  guardianPhone: string;
 }
 
 export default function OrderSeats() {
@@ -74,15 +79,19 @@ export default function OrderSeats() {
       name: seat.name || '',
       email: seat.email || '',
       phone: seat.phone || '',
+      isMinor: seat.isMinor ?? false,
+      guardianName: seat.guardianName || '',
+      guardianEmail: seat.guardianEmail || '',
+      guardianPhone: seat.guardianPhone || '',
     };
   };
 
-  const setFormValue = (seatId: string, field: keyof SeatForm, value: string) => {
+  const setFormValue = (seatId: string, field: keyof SeatForm, value: string | boolean) => {
     setEditingForms(prev => ({
       ...prev,
       [seatId]: {
         ...getFormValue(seatId, seats.find(s => s.id === seatId)),
-        [field]: value,
+        [field]: field === 'isMinor' ? !!value : value,
       },
     }));
   };
@@ -91,14 +100,31 @@ export default function OrderSeats() {
     const form = editingForms[seatId];
     if (!form) return;
 
-    if (!form.name.trim() || !form.email.trim()) {
-      toast.error('Name and email are required');
+    if (!form.name.trim()) {
+      toast.error('Name is required');
+      return;
+    }
+    if (!form.isMinor && !form.email.trim()) {
+      toast.error('Email is required for non-minor attendees');
+      return;
+    }
+    if (form.isMinor && (!form.guardianName.trim() || !form.guardianEmail.trim())) {
+      toast.error('Guardian name and email are required for minors');
       return;
     }
 
     setSavingId(seatId);
     updateSeat.mutate(
-      { id: seatId, name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim() },
+      {
+        id: seatId,
+        name: form.name.trim(),
+        email: form.isMinor ? '' : form.email.trim(),
+        phone: form.isMinor ? '' : form.phone.trim(),
+        is_minor: form.isMinor,
+        guardian_name: form.isMinor ? form.guardianName.trim() : '',
+        guardian_email: form.isMinor ? form.guardianEmail.trim() : '',
+        guardian_phone: form.isMinor ? form.guardianPhone.trim() : '',
+      },
       {
         onSuccess: () => {
           toast.success('Seat assignment saved');
@@ -205,28 +231,82 @@ export default function OrderSeats() {
                         onChange={(e) => setFormValue(seat.id, 'name', e.target.value)}
                       />
                     </div>
-                    <div>
-                      <Label className="text-xs flex items-center gap-1.5 mb-1.5">
-                        <Mail className="h-3 w-3" /> Email *
-                      </Label>
-                      <Input
-                        type="email"
-                        placeholder="john@example.com"
-                        value={form.email}
-                        onChange={(e) => setFormValue(seat.id, 'email', e.target.value)}
+
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id={`minor-${seat.id}`}
+                        checked={form.isMinor}
+                        onCheckedChange={(checked) => setFormValue(seat.id, 'isMinor', checked ? 'true' : '')}
                       />
-                    </div>
-                    <div>
-                      <Label className="text-xs flex items-center gap-1.5 mb-1.5">
-                        <Phone className="h-3 w-3" /> Phone
+                      <Label htmlFor={`minor-${seat.id}`} className="text-sm cursor-pointer">
+                        This seat is for a minor
                       </Label>
-                      <Input
-                        type="tel"
-                        placeholder="+1234567890"
-                        value={form.phone}
-                        onChange={(e) => setFormValue(seat.id, 'phone', e.target.value)}
-                      />
                     </div>
+
+                    {!form.isMinor ? (
+                      <>
+                        <div>
+                          <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                            <Mail className="h-3 w-3" /> Email *
+                          </Label>
+                          <Input
+                            type="email"
+                            placeholder="john@example.com"
+                            value={form.email}
+                            onChange={(e) => setFormValue(seat.id, 'email', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                            <Phone className="h-3 w-3" /> Phone
+                          </Label>
+                          <Input
+                            type="tel"
+                            placeholder="+1234567890"
+                            value={form.phone}
+                            onChange={(e) => setFormValue(seat.id, 'phone', e.target.value)}
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="rounded-lg border border-dashed border-muted-foreground/30 p-3 space-y-3">
+                        <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                          <ShieldCheck className="h-3.5 w-3.5" /> Guardian / Parent Details
+                        </p>
+                        <div>
+                          <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                            <User className="h-3 w-3" /> Guardian Name *
+                          </Label>
+                          <Input
+                            placeholder="Jane Doe"
+                            value={form.guardianName}
+                            onChange={(e) => setFormValue(seat.id, 'guardianName', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                            <Mail className="h-3 w-3" /> Guardian Email *
+                          </Label>
+                          <Input
+                            type="email"
+                            placeholder="jane@example.com"
+                            value={form.guardianEmail}
+                            onChange={(e) => setFormValue(seat.id, 'guardianEmail', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                            <Phone className="h-3 w-3" /> Guardian Phone
+                          </Label>
+                          <Input
+                            type="tel"
+                            placeholder="+1234567890"
+                            value={form.guardianPhone}
+                            onChange={(e) => setFormValue(seat.id, 'guardianPhone', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

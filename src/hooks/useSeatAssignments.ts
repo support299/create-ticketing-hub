@@ -9,6 +9,10 @@ export interface SeatAssignment {
   email: string | null;
   phone: string | null;
   checkedInAt: string | null;
+  isMinor: boolean;
+  guardianName: string | null;
+  guardianEmail: string | null;
+  guardianPhone: string | null;
 }
 
 function mapRow(row: any): SeatAssignment {
@@ -20,6 +24,10 @@ function mapRow(row: any): SeatAssignment {
     email: row.email,
     phone: row.phone,
     checkedInAt: row.checked_in_at,
+    isMinor: row.is_minor ?? false,
+    guardianName: row.guardian_name,
+    guardianEmail: row.guardian_email,
+    guardianPhone: row.guardian_phone,
   };
 }
 
@@ -70,10 +78,10 @@ export function useUpdateSeatAssignment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, name, email, phone }: { id: string; name: string; email: string; phone: string }) => {
+    mutationFn: async ({ id, name, email, phone, is_minor, guardian_name, guardian_email, guardian_phone }: { id: string; name: string; email: string; phone: string; is_minor?: boolean; guardian_name?: string; guardian_email?: string; guardian_phone?: string }) => {
       const { error } = await supabase
         .from('seat_assignments')
-        .update({ name, email, phone })
+        .update({ name, email, phone, is_minor: is_minor ?? false, guardian_name: guardian_name ?? null, guardian_email: guardian_email ?? null, guardian_phone: guardian_phone ?? null })
         .eq('id', id);
       if (error) throw error;
     },
