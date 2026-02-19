@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { Attendee, Contact } from '@/types';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
-import { Check, QrCode, Undo2, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Check, QrCode, Undo2, Loader2, User, Mail, Phone, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
@@ -28,6 +31,7 @@ import {
   useSeatAssignmentsByAttendee,
   useCheckInSeat,
   useCheckOutSeat,
+  useUpdateSeatAssignment,
 } from '@/hooks/useSeatAssignments';
 import { useCheckInAttendee, useCheckOutAttendee } from '@/hooks/useAttendees';
 
@@ -150,7 +154,10 @@ function SeatCheckInDialog({
   const { data: seats = [], isLoading } = useSeatAssignmentsByAttendee(open ? attendee.id : undefined);
   const checkInSeat = useCheckInSeat();
   const checkInAttendee = useCheckInAttendee();
+  const updateSeat = useUpdateSeatAssignment();
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [assignForm, setAssignForm] = useState({ name: '', email: '', phone: '', isMinor: false, guardianName: '', guardianEmail: '', guardianPhone: '' });
 
   const availableSeats = seats.filter(s => s.name && !s.checkedInAt);
   const unassignedSeats = seats.filter(s => !s.name && !s.checkedInAt);
@@ -174,6 +181,53 @@ function SeatCheckInDialog({
     });
   };
 
+  const handleAssignAndCheckIn = (seatId: string) => {
+    if (!assignForm.name) {
+      toast.error('Name is required');
+      return;
+    }
+    if (!assignForm.isMinor && !assignForm.email) {
+      toast.error('Email is required for non-minor attendees');
+      return;
+    }
+    if (assignForm.isMinor && (!assignForm.guardianName || !assignForm.guardianEmail)) {
+      toast.error('Guardian name and email are required for minors');
+      return;
+    }
+    updateSeat.mutate(
+      {
+        id: seatId,
+        name: assignForm.name,
+        email: assignForm.isMinor ? '' : assignForm.email,
+        phone: assignForm.isMinor ? '' : assignForm.phone,
+        is_minor: assignForm.isMinor,
+        guardian_name: assignForm.isMinor ? assignForm.guardianName : '',
+        guardian_email: assignForm.isMinor ? assignForm.guardianEmail : '',
+        guardian_phone: assignForm.isMinor ? assignForm.guardianPhone : '',
+      },
+      {
+        onSuccess: () => {
+          checkInSeat.mutate(seatId, {
+            onSuccess: () => {
+              checkInAttendee.mutate(attendee.id, {
+                onSuccess: () => {
+                  toast.success('Check-in complete!', {
+                    description: `${assignForm.name} has been checked in.`,
+                  });
+                  setAssigningId(null);
+                  setAssignForm({ name: '', email: '', phone: '', isMinor: false, guardianName: '', guardianEmail: '', guardianPhone: '' });
+                  onOpenChange(false);
+                },
+              });
+            },
+            onError: () => toast.error('Failed to check in seat'),
+          });
+        },
+        onError: () => toast.error('Failed to assign seat'),
+      }
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
@@ -190,6 +244,136 @@ function SeatCheckInDialog({
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           )}
+
+          {/* Unassigned seats with inline assign */}
+          {unassignedSeats.map((seat) => (
+            <div key={seat.id} className="rounded-xl border border-dashed border-border p-4">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground text-sm font-bold">
+                    {seat.seatNumber}
+                  </div>
+                  <p className="text-sm text-muted-foreground italic">Unassigned</p>
+                </div>
+                {assigningId !== seat.id && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setAssigningId(seat.id);
+                      setSelectedSeatId(null);
+                      setAssignForm({ name: '', email: '', phone: '', isMinor: false, guardianName: '', guardianEmail: '', guardianPhone: '' });
+                    }}
+                  >
+                    Assign & Check In
+                  </Button>
+                )}
+              </div>
+              {assigningId === seat.id && (
+                <div className="space-y-3 mt-3 pt-3 border-t border-border">
+                  <div>
+                    <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                      <User className="h-3 w-3" /> Full Name *
+                    </Label>
+                    <Input
+                      value={assignForm.name}
+                      onChange={(e) => setAssignForm(f => ({ ...f, name: e.target.value }))}
+                      placeholder="Full name"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id={`minor-dialog-${seat.id}`}
+                      checked={assignForm.isMinor}
+                      onCheckedChange={(checked) => setAssignForm(f => ({ ...f, isMinor: !!checked }))}
+                    />
+                    <Label htmlFor={`minor-dialog-${seat.id}`} className="text-sm cursor-pointer">
+                      This seat is for a minor
+                    </Label>
+                  </div>
+
+                  {!assignForm.isMinor ? (
+                    <>
+                      <div>
+                        <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                          <Mail className="h-3 w-3" /> Email *
+                        </Label>
+                        <Input
+                          type="email"
+                          value={assignForm.email}
+                          onChange={(e) => setAssignForm(f => ({ ...f, email: e.target.value }))}
+                          placeholder="email@example.com"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                          <Phone className="h-3 w-3" /> Phone
+                        </Label>
+                        <Input
+                          value={assignForm.phone}
+                          onChange={(e) => setAssignForm(f => ({ ...f, phone: e.target.value }))}
+                          placeholder="Phone number"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-muted-foreground/30 p-3 space-y-3">
+                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                        <ShieldCheck className="h-3.5 w-3.5" /> Guardian / Parent Details
+                      </p>
+                      <div>
+                        <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                          <User className="h-3 w-3" /> Guardian Name *
+                        </Label>
+                        <Input
+                          placeholder="Jane Doe"
+                          value={assignForm.guardianName}
+                          onChange={(e) => setAssignForm(f => ({ ...f, guardianName: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                          <Mail className="h-3 w-3" /> Guardian Email *
+                        </Label>
+                        <Input
+                          type="email"
+                          placeholder="jane@example.com"
+                          value={assignForm.guardianEmail}
+                          onChange={(e) => setAssignForm(f => ({ ...f, guardianEmail: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                          <Phone className="h-3 w-3" /> Guardian Phone
+                        </Label>
+                        <Input
+                          type="tel"
+                          placeholder="+1234567890"
+                          value={assignForm.guardianPhone}
+                          onChange={(e) => setAssignForm(f => ({ ...f, guardianPhone: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleAssignAndCheckIn(seat.id)}
+                      disabled={updateSeat.isPending || checkInSeat.isPending}
+                    >
+                      <Check className="h-3.5 w-3.5 mr-1" />
+                      Confirm
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setAssigningId(null)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
 
           {availableSeats.map((seat) => (
             <button
@@ -215,17 +399,6 @@ function SeatCheckInDialog({
                 </div>
               </div>
             </button>
-          ))}
-
-          {unassignedSeats.map((seat) => (
-            <div key={seat.id} className="rounded-xl border border-dashed border-border p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground text-sm font-bold">
-                  {seat.seatNumber}
-                </div>
-                <p className="text-sm text-muted-foreground italic">Unassigned — assign a seat before checking in</p>
-              </div>
-            </div>
           ))}
 
           {checkedInSeats.length > 0 && (
