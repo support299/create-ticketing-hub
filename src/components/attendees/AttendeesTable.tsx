@@ -191,13 +191,10 @@ function SeatCheckInDialog({
             </div>
           )}
 
-          {/* Assigned seats available for check-in */}
           {availableSeats.map((seat) => (
             <button
               key={seat.id}
-              onClick={() => {
-                setSelectedSeatId(seat.id);
-              }}
+              onClick={() => setSelectedSeatId(seat.id)}
               className={cn(
                 'w-full rounded-xl border p-4 text-left transition-all',
                 selectedSeatId === seat.id
@@ -220,7 +217,6 @@ function SeatCheckInDialog({
             </button>
           ))}
 
-          {/* Unassigned seats */}
           {unassignedSeats.map((seat) => (
             <div key={seat.id} className="rounded-xl border border-dashed border-border p-4">
               <div className="flex items-center gap-3">
@@ -232,7 +228,6 @@ function SeatCheckInDialog({
             </div>
           ))}
 
-          {/* Already checked in */}
           {checkedInSeats.length > 0 && (
             <div className="mt-2">
               <p className="text-xs text-muted-foreground mb-2">Already checked in:</p>
@@ -250,7 +245,6 @@ function SeatCheckInDialog({
             </div>
           )}
 
-          {/* Check-in button for selected assigned seat */}
           {selectedSeatId && (
             <Button
               onClick={() => handleCheckInSeat(selectedSeatId)}
@@ -292,7 +286,7 @@ export function AttendeesTable({ attendees, onCheckOut }: AttendeesTableProps) {
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead className="font-display">Ticket #</TableHead>
-              <TableHead className="font-display">Attendee</TableHead>
+              <TableHead className="font-display">Buyer Name</TableHead>
               <TableHead className="font-display">Event</TableHead>
               <TableHead className="font-display">Check-ins</TableHead>
               <TableHead className="font-display">Status</TableHead>
@@ -376,7 +370,6 @@ export function AttendeesTable({ attendees, onCheckOut }: AttendeesTableProps) {
         </Table>
       </div>
 
-      {/* QR Code Dialog */}
       <Dialog open={!!selectedAttendee} onOpenChange={() => setSelectedAttendee(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -402,7 +395,6 @@ export function AttendeesTable({ attendees, onCheckOut }: AttendeesTableProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Seat Check-In Dialog */}
       {checkInAttendee && (
         <SeatCheckInDialog
           attendee={checkInAttendee}
@@ -411,7 +403,6 @@ export function AttendeesTable({ attendees, onCheckOut }: AttendeesTableProps) {
         />
       )}
 
-      {/* Seat Check-Out Dialog */}
       {checkOutAttendee && (
         <SeatCheckOutDialog
           attendee={checkOutAttendee}

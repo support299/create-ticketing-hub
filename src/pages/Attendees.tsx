@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { AttendeesTable } from '@/components/attendees/AttendeesTable';
 import { AttendanceTable } from '@/components/attendees/AttendanceTable';
@@ -12,6 +13,7 @@ export default function Attendees() {
   const { data: attendees = [], isLoading } = useAttendees();
   const checkInMutation = useCheckInAttendee();
   const checkOutMutation = useCheckOutAttendee();
+  const [search, setSearch] = useState('');
 
   const handleCheckIn = (attendeeId: string) => {
     const attendee = attendees.find(a => a.id === attendeeId);
@@ -48,6 +50,17 @@ export default function Attendees() {
   const totalTickets = attendees.reduce((sum, a) => sum + a.totalTickets, 0);
   const totalCheckedIn = attendees.reduce((sum, a) => sum + a.checkInCount, 0);
 
+  const filteredAttendees = attendees.filter(a => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      a.contact.name.toLowerCase().includes(q) ||
+      a.contact.email.toLowerCase().includes(q) ||
+      a.ticketNumber.toLowerCase().includes(q) ||
+      a.eventTitle.toLowerCase().includes(q)
+    );
+  });
+
   if (isLoading) {
     return (
       <MainLayout>
@@ -76,8 +89,10 @@ export default function Attendees() {
           <div className="relative w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
-              placeholder="Search attendees..." 
+              placeholder="Search by name, email, ticket..." 
               className="pl-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
         </div>
@@ -108,13 +123,15 @@ export default function Attendees() {
           </TabsList>
 
           <TabsContent value="tickets">
-            {attendees.length === 0 ? (
+            {filteredAttendees.length === 0 ? (
               <div className="text-center py-12 rounded-2xl border border-dashed border-border">
-                <p className="text-muted-foreground">No attendees yet.</p>
+                <p className="text-muted-foreground">
+                  {search ? 'No matching tickets found.' : 'No attendees yet.'}
+                </p>
               </div>
             ) : (
               <AttendeesTable 
-                attendees={attendees} 
+                attendees={filteredAttendees} 
                 onCheckIn={handleCheckIn}
                 onCheckOut={handleCheckOut}
               />
@@ -122,7 +139,7 @@ export default function Attendees() {
           </TabsContent>
 
           <TabsContent value="attendance">
-            <AttendanceTable />
+            <AttendanceTable searchQuery={search} />
           </TabsContent>
         </Tabs>
       </div>
