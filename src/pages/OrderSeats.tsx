@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSeatAssignmentsByOrder, useUpdateSeatAssignment } from '@/hooks/useSeatAssignments';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Check, Ticket, User, Mail, Phone, Loader2, ShieldCheck } from 'lucide-react';
+import { Check, Ticket, User, Mail, Phone, Loader2, ShieldCheck, ArrowLeft } from 'lucide-react';
 
 interface SeatForm {
   name: string;
@@ -22,6 +22,9 @@ interface SeatForm {
 
 export default function OrderSeats() {
   const { ticketNumber } = useParams<{ ticketNumber: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const locationId = searchParams.get('id');
 
   // Resolve ticket number to order ID
   const { data: resolvedOrderId, isLoading: resolving } = useQuery({
@@ -165,6 +168,19 @@ export default function OrderSeats() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+        {/* Back button */}
+        {locationId && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(`/orders?id=${locationId}`)}
+            className="flex items-center gap-1"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Orders
+          </Button>
+        )}
+
         {/* Header */}
         <div className="text-center space-y-2">
           <div className="flex justify-center mb-4">
