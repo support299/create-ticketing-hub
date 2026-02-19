@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Undo2, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
   Table,
@@ -29,19 +30,19 @@ interface AttendanceRecord {
   phone: string;
   eventTitle: string;
   mainPurchaser: string;
-  checkedInAt: string;
+  checkedInAt: string | null;
 }
 
 function useAttendanceRecords() {
   return useQuery({
     queryKey: ['attendance_records'],
     queryFn: async () => {
-      // Get all checked-in seat assignments
+      // Get all seat assignments that have a name assigned (assigned to someone)
       const { data: seats, error: seatsError } = await supabase
         .from('seat_assignments')
         .select('id, attendee_id, name, email, phone, checked_in_at')
-        .not('checked_in_at', 'is', null)
-        .order('checked_in_at', { ascending: false });
+        .not('name', 'is', null)
+        .order('checked_in_at', { ascending: false, nullsFirst: false });
 
       if (seatsError) throw seatsError;
       if (!seats || seats.length === 0) return [];
@@ -80,7 +81,7 @@ function useAttendanceRecords() {
           phone: seat.phone || '',
           eventTitle: attendee?.event_title || '',
           mainPurchaser: contact?.name || '',
-          checkedInAt: seat.checked_in_at!,
+          checkedInAt: seat.checked_in_at,
         };
       });
 
@@ -122,7 +123,7 @@ export function AttendanceTable() {
   if (records.length === 0) {
     return (
       <div className="text-center py-12 rounded-2xl border border-dashed border-border">
-        <p className="text-muted-foreground">No one has checked in yet.</p>
+        <p className="text-muted-foreground">No assigned attendees yet.</p>
       </div>
     );
   }
@@ -137,6 +138,7 @@ export function AttendanceTable() {
             <TableHead className="font-display">Phone</TableHead>
             <TableHead className="font-display">Event</TableHead>
             <TableHead className="font-display">Main Purchaser</TableHead>
+            <TableHead className="font-display">Status</TableHead>
             <TableHead className="font-display">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -149,20 +151,31 @@ export function AttendanceTable() {
               <TableCell className="max-w-[200px] truncate">{record.eventTitle}</TableCell>
               <TableCell className="text-sm">{record.mainPurchaser}</TableCell>
               <TableCell>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-warning hover:text-warning hover:bg-warning/10"
-                      onClick={() => handleCheckOut(record)}
-                      disabled={checkOutSeat.isPending}
-                    >
-                      <Undo2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Check Out</TooltipContent>
-                </Tooltip>
+                {record.checkedInAt ? (
+                  <Badge variant="default" className="bg-green-600 hover:bg-green-600 text-white">Checked In</Badge>
+                ) : (
+                  <Badge variant="secondary">Not Checked In</Badge>
+                )}
+              </TableCell>
+              <TableCell>
+                {record.checkedInAt ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-warning hover:text-warning hover:bg-warning/10"
+                        onClick={() => handleCheckOut(record)}
+                        disabled={checkOutSeat.isPending}
+                      >
+                        <Undo2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Check Out</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <span className="text-muted-foreground text-xs">—</span>
+                )}
               </TableCell>
             </TableRow>
           ))}
