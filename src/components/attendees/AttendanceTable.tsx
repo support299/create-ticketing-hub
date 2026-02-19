@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Check, Undo2, Loader2 } from 'lucide-react';
+import { Check, Undo2, UserX, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/tooltip';
 import { useCheckInSeat, useCheckOutSeat } from '@/hooks/useSeatAssignments';
 import { useCheckInAttendee, useCheckOutAttendee } from '@/hooks/useAttendees';
-import { useQueryClient } from '@tanstack/react-query';
 
 interface AttendanceRecord {
   seatId: string;
@@ -31,6 +30,7 @@ interface AttendanceRecord {
   eventTitle: string;
   mainPurchaser: string;
   checkedInAt: string | null;
+  ticketNumber: string;
 }
 
 interface AttendanceTableProps {
@@ -54,7 +54,7 @@ function useAttendanceRecords() {
 
       const { data: attendees, error: attError } = await supabase
         .from('attendees')
-        .select('id, event_title, contact_id')
+        .select('id, event_title, contact_id, ticket_number')
         .in('id', attendeeIds);
 
       if (attError) throw attError;
@@ -82,10 +82,29 @@ function useAttendanceRecords() {
           eventTitle: attendee?.event_title || '',
           mainPurchaser: contact?.name || '',
           checkedInAt: seat.checked_in_at,
+          ticketNumber: attendee?.ticket_number || '',
         };
       });
 
       return records;
+    },
+  });
+}
+
+function useUnassignSeat() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (seatId: string) => {
+      const { error } = await supabase
+        .from('seat_assignments')
+        .update({ name: null, email: null, phone: null, checked_in_at: null })
+        .eq('id', seatId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['attendance_records'] });
+      queryClient.invalidateQueries({ queryKey: ['seat_assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['attendees'] });
     },
   });
 }
@@ -96,6 +115,7 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
   const checkInAttendee = useCheckInAttendee();
   const checkOutSeat = useCheckOutSeat();
   const checkOutAttendee = useCheckOutAttendee();
+  const unassignSeat = useUnassignSeat();
   const queryClient = useQueryClient();
 
   const filteredRecords = useMemo(() => {
@@ -106,7 +126,8 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
       r.email.toLowerCase().includes(q) ||
       r.phone.toLowerCase().includes(q) ||
       r.eventTitle.toLowerCase().includes(q) ||
-      r.mainPurchaser.toLowerCase().includes(q)
+      r.mainPurchaser.toLowerCase().includes(q) ||
+      r.ticketNumber.toLowerCase().includes(q)
     );
   }, [records, searchQuery]);
 
@@ -142,6 +163,17 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
     });
   };
 
+  const handleUnassign = (record: AttendanceRecord) => {
+    unassignSeat.mutate(record.seatId, {
+      onSuccess: () => {
+        toast.success('Seat unassigned', {
+          description: `${record.name} has been removed from the seat.`,
+        });
+      },
+      onError: () => toast.error('Failed to unassign seat'),
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -165,6 +197,7 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50">
+            <TableHead className="font-display">Ticket #</TableHead>
             <TableHead className="font-display">Name</TableHead>
             <TableHead className="font-display">Email</TableHead>
             <TableHead className="font-display">Phone</TableHead>
@@ -177,6 +210,7 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
         <TableBody>
           {filteredRecords.map((record) => (
             <TableRow key={record.seatId} className="hover:bg-muted/30 transition-colors">
+              <TableCell className="font-mono text-sm">{record.ticketNumber}</TableCell>
               <TableCell className="font-medium">{record.name}</TableCell>
               <TableCell className="text-sm">{record.email}</TableCell>
               <TableCell className="text-sm">{record.phone || '—'}</TableCell>
@@ -222,6 +256,20 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
                       <TooltipContent>Check In</TooltipContent>
                     </Tooltip>
                   )}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleUnassign(record)}
+                        disabled={unassignSeat.isPending}
+                      >
+                        <UserX className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Unassign Seat</TooltipContent>
+                  </Tooltip>
                 </div>
               </TableCell>
             </TableRow>
