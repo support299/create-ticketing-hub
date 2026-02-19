@@ -12,6 +12,7 @@ import Attendees from "./pages/Attendees";
 import CheckIn from "./pages/CheckIn";
 import OrderSeats from "./pages/OrderSeats";
 import NotFound from "./pages/NotFound";
+import { LocationGuard } from "./components/layout/LocationGuard";
 
 const queryClient = new QueryClient();
 
@@ -23,13 +24,13 @@ const App = () => (
       <BrowserRouter>
         <LocationProvider>
           <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/events" element={<Events />} />
-            <Route path="/events/:id" element={<EventDetail />} />
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/attendees" element={<Attendees />} />
+            <Route path="/" element={<LocationGuard><Dashboard /></LocationGuard>} />
+            <Route path="/events" element={<LocationGuard><Events /></LocationGuard>} />
+            <Route path="/events/:id" element={<LocationGuard><EventDetail /></LocationGuard>} />
+            <Route path="/orders" element={<LocationGuard><Orders /></LocationGuard>} />
+            <Route path="/attendees" element={<LocationGuard><Attendees /></LocationGuard>} />
             <Route path="/check-in" element={<CheckIn />} />
-            <Route path="/orders/:ticketNumber" element={<OrderSeats />} />
+            <Route path="/orders/:ticketNumber" element={<LocationGuard><OrderSeats /></LocationGuard>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
