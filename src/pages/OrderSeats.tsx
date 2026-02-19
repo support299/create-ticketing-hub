@@ -108,11 +108,11 @@ export default function OrderSeats() {
       return;
     }
     if (!form.isMinor && !form.email.trim()) {
-      toast.error('Email is required for non-minor attendees');
+      toast.error('Email is required for non-child attendees');
       return;
     }
     if (form.isMinor && (!form.guardianName.trim() || !form.guardianEmail.trim())) {
-      toast.error('Guardian name and email are required for minors');
+      toast.error('Guardian name and email are required for children');
       return;
     }
 
@@ -230,7 +230,7 @@ export default function OrderSeats() {
                     <>
                       <span className="text-xs text-muted-foreground">— {seat.name}</span>
                       {seat.isMinor && (
-                        <span className="text-xs bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">Minor</span>
+                        <span className="text-xs bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">Child</span>
                       )}
                     </>
                   )}
@@ -260,7 +260,7 @@ export default function OrderSeats() {
                         onCheckedChange={(checked) => setFormValue(seat.id, 'isMinor', checked ? 'true' : '')}
                       />
                       <Label htmlFor={`minor-${seat.id}`} className="text-sm cursor-pointer">
-                        This seat is for a minor
+                        This seat is for a child
                       </Label>
                     </div>
 

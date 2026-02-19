@@ -187,11 +187,11 @@ function SeatCheckInDialog({
       return;
     }
     if (!assignForm.isMinor && !assignForm.email) {
-      toast.error('Email is required for non-minor attendees');
+      toast.error('Email is required for non-child attendees');
       return;
     }
     if (assignForm.isMinor && (!assignForm.guardianName || !assignForm.guardianEmail)) {
-      toast.error('Guardian name and email are required for minors');
+      toast.error('Guardian name and email are required for children');
       return;
     }
     updateSeat.mutate(
@@ -289,7 +289,7 @@ function SeatCheckInDialog({
                       onCheckedChange={(checked) => setAssignForm(f => ({ ...f, isMinor: !!checked }))}
                     />
                     <Label htmlFor={`minor-dialog-${seat.id}`} className="text-sm cursor-pointer">
-                      This seat is for a minor
+                      This seat is for a child
                     </Label>
                   </div>
 
