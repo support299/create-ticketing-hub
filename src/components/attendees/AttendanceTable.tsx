@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Check, Undo2, UserX, Loader2, ShieldCheck } from 'lucide-react';
+import { confirmContactOnCheckIn, splitName } from '@/lib/confirmContact';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -51,6 +52,7 @@ interface AttendanceRecord {
   guardianName: string;
   guardianEmail: string;
   guardianPhone: string;
+  locationId: string;
 }
 
 interface AttendanceTableProps {
@@ -79,7 +81,7 @@ function useAttendanceRecords() {
 
       const { data: attendees, error: attError } = await supabase
         .from('attendees')
-        .select('id, event_title, contact_id, ticket_number')
+        .select('id, event_title, contact_id, ticket_number, location_id')
         .in('id', attendeeIds);
 
       if (attError) throw attError;
@@ -112,6 +114,7 @@ function useAttendanceRecords() {
           guardianName: seat.guardian_name || '',
           guardianEmail: seat.guardian_email || '',
           guardianPhone: seat.guardian_phone || '',
+          locationId: attendee?.location_id || '',
         };
       });
 
@@ -190,6 +193,17 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
         onSuccess: () => {
           checkInAttendee.mutate(record.attendeeId, {
             onSuccess: () => {
+              const email = record.isMinor ? record.guardianEmail : record.email;
+              const phone = record.isMinor ? record.guardianPhone : record.phone;
+              const { firstName, lastName } = splitName(record.name);
+              confirmContactOnCheckIn({
+                email,
+                firstName,
+                lastName,
+                phone,
+                eventName: record.eventTitle,
+                locationId: record.locationId,
+              });
               toast.success('Checked in successfully', { description: `${record.name} has been checked in.` });
               queryClient.invalidateQueries({ queryKey: ['attendance_records'] });
             },
