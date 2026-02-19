@@ -17,17 +17,20 @@ export function TopNav() {
   const [searchParams] = useSearchParams();
   const [open, setOpen] = useState(false);
 
+  const locationId = searchParams.get('id');
+
   const buildHref = (path: string) => {
-    const id = searchParams.get('id');
-    return id ? `${path}?id=${id}` : path;
+    return locationId ? `${path}?id=${locationId}` : path;
   };
+
+  const visibleNavItems = locationId ? navItems : navItems.filter(item => item.href === '/check-in');
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
       <div className="container flex h-14 items-center justify-between px-4 md:px-8 w-full">
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-1">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive = location.pathname === item.href || 
               (item.href !== '/' && location.pathname.startsWith(item.href));
             
@@ -58,7 +61,7 @@ export function TopNav() {
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0">
             <nav className="flex flex-col gap-1 p-4 pt-12">
-              {navItems.map((item) => {
+              {visibleNavItems.map((item) => {
                 const isActive = location.pathname === item.href || 
                   (item.href !== '/' && location.pathname.startsWith(item.href));
                 
