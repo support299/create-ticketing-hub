@@ -93,7 +93,7 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                 {format(new Date(order.createdAt), 'MMM d, yyyy')}
               </TableCell>
                <TableCell>
-                <Link to={`/orders/${order.id}`}>
+                <Link to={`/orders/TKT-${order.id.substring(0, 8).toUpperCase()}`}>
                   <Button
                     variant="ghost"
                     size="sm"
