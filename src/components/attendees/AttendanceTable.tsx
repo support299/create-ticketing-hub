@@ -2,8 +2,14 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Check, Undo2, UserX, Loader2 } from 'lucide-react';
+import { Check, Undo2, UserX, Loader2, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import {
   Table,
@@ -41,6 +47,10 @@ interface AttendanceRecord {
   mainPurchaser: string;
   checkedInAt: string | null;
   ticketNumber: string;
+  isMinor: boolean;
+  guardianName: string;
+  guardianEmail: string;
+  guardianPhone: string;
 }
 
 interface AttendanceTableProps {
@@ -58,7 +68,7 @@ function useAttendanceRecords() {
     queryFn: async () => {
       const { data: seats, error: seatsError } = await supabase
         .from('seat_assignments')
-        .select('id, attendee_id, name, email, phone, checked_in_at')
+        .select('id, attendee_id, name, email, phone, checked_in_at, is_minor, guardian_name, guardian_email, guardian_phone')
         .not('name', 'is', null)
         .order('checked_in_at', { ascending: false, nullsFirst: false });
 
@@ -98,6 +108,10 @@ function useAttendanceRecords() {
           mainPurchaser: contact?.name || '',
           checkedInAt: seat.checked_in_at,
           ticketNumber: attendee?.ticket_number || '',
+          isMinor: seat.is_minor ?? false,
+          guardianName: seat.guardian_name || '',
+          guardianEmail: seat.guardian_email || '',
+          guardianPhone: seat.guardian_phone || '',
         };
       });
 
@@ -151,6 +165,7 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
   const unassignSeat = useUnassignSeat();
   const queryClient = useQueryClient();
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const [guardianRecord, setGuardianRecord] = useState<AttendanceRecord | null>(null);
 
   const filteredRecords = useMemo(() => {
     if (!searchQuery) return records;
@@ -244,9 +259,16 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
             {filteredRecords.map((record) => (
               <TableRow key={record.seatId} className="hover:bg-muted/30 transition-colors">
                 <TableCell className="font-mono text-sm">{record.ticketNumber}</TableCell>
-                <TableCell className="font-medium">{record.name}</TableCell>
-                <TableCell className="text-sm">{record.email}</TableCell>
-                <TableCell className="text-sm">{record.phone || '—'}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-1.5">
+                    {record.name}
+                    {record.isMinor && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/40 text-amber-600 dark:text-amber-400">Minor</Badge>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-sm">{record.isMinor ? '—' : record.email}</TableCell>
+                <TableCell className="text-sm">{record.isMinor ? '—' : (record.phone || '—')}</TableCell>
                 <TableCell className="max-w-[200px] truncate">{record.eventTitle}</TableCell>
                 <TableCell className="text-sm">{record.mainPurchaser}</TableCell>
                 <TableCell>
@@ -258,6 +280,21 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
+                    {record.isMinor && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                            onClick={() => setGuardianRecord(record)}
+                          >
+                            <ShieldCheck className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>View Guardian Details</TooltipContent>
+                      </Tooltip>
+                    )}
                     {record.checkedInAt ? (
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -327,6 +364,35 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!guardianRecord} onOpenChange={(open) => { if (!open) setGuardianRecord(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              Guardian Details
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-2">
+            <div>
+              <p className="text-xs text-muted-foreground">Minor</p>
+              <p className="font-medium">{guardianRecord?.name}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Guardian Name</p>
+              <p className="font-medium">{guardianRecord?.guardianName || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Guardian Email</p>
+              <p className="font-medium">{guardianRecord?.guardianEmail || '—'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Guardian Phone</p>
+              <p className="font-medium">{guardianRecord?.guardianPhone || '—'}</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
