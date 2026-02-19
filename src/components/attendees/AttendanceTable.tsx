@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -33,11 +33,14 @@ interface AttendanceRecord {
   checkedInAt: string | null;
 }
 
+interface AttendanceTableProps {
+  searchQuery?: string;
+}
+
 function useAttendanceRecords() {
   return useQuery({
     queryKey: ['attendance_records'],
     queryFn: async () => {
-      // Get all seat assignments that have a name assigned (assigned to someone)
       const { data: seats, error: seatsError } = await supabase
         .from('seat_assignments')
         .select('id, attendee_id, name, email, phone, checked_in_at')
@@ -47,10 +50,8 @@ function useAttendanceRecords() {
       if (seatsError) throw seatsError;
       if (!seats || seats.length === 0) return [];
 
-      // Get unique attendee IDs
       const attendeeIds = [...new Set(seats.map(s => s.attendee_id))];
 
-      // Get attendees with their contact (main purchaser) and event info
       const { data: attendees, error: attError } = await supabase
         .from('attendees')
         .select('id, event_title, contact_id')
@@ -58,7 +59,6 @@ function useAttendanceRecords() {
 
       if (attError) throw attError;
 
-      // Get contacts for main purchasers
       const contactIds = [...new Set((attendees || []).map(a => a.contact_id))];
       const { data: contacts, error: conError } = await supabase
         .from('contacts')
@@ -90,11 +90,23 @@ function useAttendanceRecords() {
   });
 }
 
-export function AttendanceTable() {
+export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
   const { data: records = [], isLoading } = useAttendanceRecords();
   const checkOutSeat = useCheckOutSeat();
   const checkOutAttendee = useCheckOutAttendee();
   const queryClient = useQueryClient();
+
+  const filteredRecords = useMemo(() => {
+    if (!searchQuery) return records;
+    const q = searchQuery.toLowerCase();
+    return records.filter(r =>
+      r.name.toLowerCase().includes(q) ||
+      r.email.toLowerCase().includes(q) ||
+      r.phone.toLowerCase().includes(q) ||
+      r.eventTitle.toLowerCase().includes(q) ||
+      r.mainPurchaser.toLowerCase().includes(q)
+    );
+  }, [records, searchQuery]);
 
   const handleCheckOut = (record: AttendanceRecord) => {
     checkOutSeat.mutate(record.seatId, {
@@ -120,10 +132,12 @@ export function AttendanceTable() {
     );
   }
 
-  if (records.length === 0) {
+  if (filteredRecords.length === 0) {
     return (
       <div className="text-center py-12 rounded-2xl border border-dashed border-border">
-        <p className="text-muted-foreground">No assigned attendees yet.</p>
+        <p className="text-muted-foreground">
+          {searchQuery ? 'No matching attendees found.' : 'No assigned attendees yet.'}
+        </p>
       </div>
     );
   }
@@ -143,7 +157,7 @@ export function AttendanceTable() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {records.map((record) => (
+          {filteredRecords.map((record) => (
             <TableRow key={record.seatId} className="hover:bg-muted/30 transition-colors">
               <TableCell className="font-medium">{record.name}</TableCell>
               <TableCell className="text-sm">{record.email}</TableCell>
