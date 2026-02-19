@@ -1,10 +1,12 @@
 import { MainLayout } from '@/components/layout/MainLayout';
 import { AttendeesTable } from '@/components/attendees/AttendeesTable';
+import { AttendanceTable } from '@/components/attendees/AttendanceTable';
 import { useAttendees, useCheckInAttendee, useCheckOutAttendee } from '@/hooks/useAttendees';
 import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Attendees() {
   const { data: attendees = [], isLoading } = useAttendees();
@@ -69,7 +71,7 @@ export default function Attendees() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold font-display">Attendees</h1>
-            <p className="text-muted-foreground mt-1">Manage attendees and tickets</p>
+            <p className="text-muted-foreground mt-1">Manage tickets and track attendance</p>
           </div>
           <div className="relative w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -98,18 +100,31 @@ export default function Attendees() {
           </div>
         </div>
 
-        {/* Attendees Table */}
-        {attendees.length === 0 ? (
-          <div className="text-center py-12 rounded-2xl border border-dashed border-border">
-            <p className="text-muted-foreground">No attendees yet.</p>
-          </div>
-        ) : (
-          <AttendeesTable 
-            attendees={attendees} 
-            onCheckIn={handleCheckIn}
-            onCheckOut={handleCheckOut}
-          />
-        )}
+        {/* Tabs */}
+        <Tabs defaultValue="tickets" className="w-full">
+          <TabsList>
+            <TabsTrigger value="tickets">Ticket Management</TabsTrigger>
+            <TabsTrigger value="attendance">Attendance</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="tickets">
+            {attendees.length === 0 ? (
+              <div className="text-center py-12 rounded-2xl border border-dashed border-border">
+                <p className="text-muted-foreground">No attendees yet.</p>
+              </div>
+            ) : (
+              <AttendeesTable 
+                attendees={attendees} 
+                onCheckIn={handleCheckIn}
+                onCheckOut={handleCheckOut}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="attendance">
+            <AttendanceTable />
+          </TabsContent>
+        </Tabs>
       </div>
     </MainLayout>
   );
