@@ -186,13 +186,13 @@ export default function OrderSeats() {
           </p>
 
           {[...seats].sort((a, b) => {
-            const aAssigned = !!a.name && !!a.email;
-            const bAssigned = !!b.name && !!b.email;
+            const aAssigned = !!a.name && (!!a.email || a.isMinor);
+            const bAssigned = !!b.name && (!!b.email || b.isMinor);
             if (aAssigned === bAssigned) return a.seatNumber - b.seatNumber;
             return aAssigned ? 1 : -1;
           }).map((seat) => {
             const form = getFormValue(seat.id, seat);
-            const isAssigned = !!seat.name && !!seat.email;
+            const isAssigned = !!seat.name && (!!seat.email || seat.isMinor);
             const isDirty = !!editingForms[seat.id];
 
             return (
@@ -210,10 +210,15 @@ export default function OrderSeats() {
                       {isAssigned ? <Check className="h-4 w-4" /> : seat.seatNumber}
                     </div>
                     <span className="font-medium">Seat {seat.seatNumber}</span>
-                    {isAssigned && !isDirty && (
+                  {isAssigned && !isDirty && (
+                    <>
                       <span className="text-xs text-muted-foreground">— {seat.name}</span>
-                    )}
-                  </div>
+                      {seat.isMinor && (
+                        <span className="text-xs bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">Minor</span>
+                      )}
+                    </>
+                  )}
+                </div>
                   {isAssigned && !isDirty && (
                     <span className="text-xs text-success font-medium">Assigned</span>
                   )}
