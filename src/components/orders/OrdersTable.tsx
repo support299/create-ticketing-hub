@@ -1,5 +1,5 @@
 import { Trash2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Order, Contact } from '@/types';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useEvents } from '@/hooks/useEvents';
@@ -34,6 +34,8 @@ interface OrdersTableProps {
 export function OrdersTable({ orders }: OrdersTableProps) {
   const { data: events = [] } = useEvents();
   const deleteOrder = useDeleteOrder();
+  const [searchParams] = useSearchParams();
+  const locationId = searchParams.get('id');
 
   const getEventTitle = (eventId: string) => {
     const event = events.find(e => e.id === eventId);
@@ -93,7 +95,7 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                 {format(new Date(order.createdAt), 'MMM d, yyyy')}
               </TableCell>
                <TableCell>
-                <Link to={`/orders/TKT-${order.id.substring(0, 8).toUpperCase()}`}>
+                <Link to={`/orders/TKT-${order.id.substring(0, 8).toUpperCase()}${locationId ? `?id=${locationId}` : ''}`}>
                   <Button
                     variant="ghost"
                     size="sm"
