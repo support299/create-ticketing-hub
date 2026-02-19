@@ -16,26 +16,42 @@ interface SeatForm {
 }
 
 export default function OrderSeats() {
-  const { orderId } = useParams<{ orderId: string }>();
-  const { data: seats = [], isLoading: seatsLoading } = useSeatAssignmentsByOrder(orderId);
+  const { ticketNumber } = useParams<{ ticketNumber: string }>();
+
+  // Resolve ticket number to order ID
+  const { data: resolvedOrderId, isLoading: resolving } = useQuery({
+    queryKey: ['resolve-ticket', ticketNumber],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('attendees')
+        .select('order_id')
+        .eq('ticket_number', ticketNumber!)
+        .single();
+      if (error) throw error;
+      return data.order_id;
+    },
+    enabled: !!ticketNumber,
+  });
+
+  const { data: seats = [], isLoading: seatsLoading } = useSeatAssignmentsByOrder(resolvedOrderId);
   const updateSeat = useUpdateSeatAssignment();
   const [editingForms, setEditingForms] = useState<Record<string, SeatForm>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
 
   const { data: orderInfo, isLoading: orderLoading } = useQuery({
-    queryKey: ['order-detail', orderId],
+    queryKey: ['order-detail', resolvedOrderId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('orders')
         .select('*, contacts(*)')
-        .eq('id', orderId!)
+        .eq('id', resolvedOrderId!)
         .single();
       if (error) throw error;
 
       const { data: attendee } = await supabase
         .from('attendees')
         .select('event_title')
-        .eq('order_id', orderId!)
+        .eq('order_id', resolvedOrderId!)
         .single();
 
       return {
@@ -47,10 +63,10 @@ export default function OrderSeats() {
         eventTitle: attendee?.event_title || 'Unknown Event',
       };
     },
-    enabled: !!orderId,
+    enabled: !!resolvedOrderId,
   });
 
-  const isLoading = seatsLoading || orderLoading;
+  const isLoading = resolving || seatsLoading || orderLoading;
 
   const getFormValue = (seatId: string, seat: any): SeatForm => {
     if (editingForms[seatId]) return editingForms[seatId];
