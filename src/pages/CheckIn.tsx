@@ -3,7 +3,8 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { QrCode, Check, X, Search, User, Ticket, Loader2 } from 'lucide-react';
+import { QrCode, Check, X, Search, User, Ticket, Loader2, Mail, Phone, ShieldCheck } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useFindAttendeeByTicket, useCheckInAttendee } from '@/hooks/useAttendees';
 import { useSeatAssignmentsByAttendee, useCheckInSeat, useUpdateSeatAssignment } from '@/hooks/useSeatAssignments';
 import { toast } from 'sonner';
@@ -22,7 +23,7 @@ export default function CheckIn() {
   const [result, setResult] = useState<CheckInResult | null>(null);
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
   const [assigningId, setAssigningId] = useState<string | null>(null);
-  const [assignForm, setAssignForm] = useState({ name: '', email: '', phone: '' });
+  const [assignForm, setAssignForm] = useState({ name: '', email: '', phone: '', isMinor: false, guardianName: '', guardianEmail: '', guardianPhone: '' });
 
   const findAttendee = useFindAttendeeByTicket();
   const checkInMutation = useCheckInAttendee();
@@ -258,7 +259,7 @@ export default function CheckIn() {
                                 onClick={() => {
                                   setAssigningId(seat.id);
                                   setSelectedSeatId(null);
-                                  setAssignForm({ name: '', email: '', phone: '' });
+                                  setAssignForm({ name: '', email: '', phone: '', isMinor: false, guardianName: '', guardianEmail: '', guardianPhone: '' });
                                 }}
                               >
                                 Assign & Check In
@@ -268,40 +269,117 @@ export default function CheckIn() {
                           {assigningId === seat.id && (
                             <div className="space-y-3 mt-3 pt-3 border-t border-border">
                               <div>
-                                <Label className="text-xs">Name *</Label>
+                                <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                                  <User className="h-3 w-3" /> Full Name *
+                                </Label>
                                 <Input
                                   value={assignForm.name}
                                   onChange={(e) => setAssignForm(f => ({ ...f, name: e.target.value }))}
                                   placeholder="Full name"
                                 />
                               </div>
-                              <div>
-                                <Label className="text-xs">Email *</Label>
-                                <Input
-                                  type="email"
-                                  value={assignForm.email}
-                                  onChange={(e) => setAssignForm(f => ({ ...f, email: e.target.value }))}
-                                  placeholder="email@example.com"
+
+                              <div className="flex items-center gap-2">
+                                <Checkbox
+                                  id={`minor-checkin-${seat.id}`}
+                                  checked={assignForm.isMinor}
+                                  onCheckedChange={(checked) => setAssignForm(f => ({ ...f, isMinor: !!checked }))}
                                 />
+                                <Label htmlFor={`minor-checkin-${seat.id}`} className="text-sm cursor-pointer">
+                                  This seat is for a minor
+                                </Label>
                               </div>
-                              <div>
-                                <Label className="text-xs">Phone</Label>
-                                <Input
-                                  value={assignForm.phone}
-                                  onChange={(e) => setAssignForm(f => ({ ...f, phone: e.target.value }))}
-                                  placeholder="Phone number"
-                                />
-                              </div>
+
+                              {!assignForm.isMinor ? (
+                                <>
+                                  <div>
+                                    <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                                      <Mail className="h-3 w-3" /> Email *
+                                    </Label>
+                                    <Input
+                                      type="email"
+                                      value={assignForm.email}
+                                      onChange={(e) => setAssignForm(f => ({ ...f, email: e.target.value }))}
+                                      placeholder="email@example.com"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                                      <Phone className="h-3 w-3" /> Phone
+                                    </Label>
+                                    <Input
+                                      value={assignForm.phone}
+                                      onChange={(e) => setAssignForm(f => ({ ...f, phone: e.target.value }))}
+                                      placeholder="Phone number"
+                                    />
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="rounded-lg border border-dashed border-muted-foreground/30 p-3 space-y-3">
+                                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                                    <ShieldCheck className="h-3.5 w-3.5" /> Guardian / Parent Details
+                                  </p>
+                                  <div>
+                                    <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                                      <User className="h-3 w-3" /> Guardian Name *
+                                    </Label>
+                                    <Input
+                                      placeholder="Jane Doe"
+                                      value={assignForm.guardianName}
+                                      onChange={(e) => setAssignForm(f => ({ ...f, guardianName: e.target.value }))}
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                                      <Mail className="h-3 w-3" /> Guardian Email *
+                                    </Label>
+                                    <Input
+                                      type="email"
+                                      placeholder="jane@example.com"
+                                      value={assignForm.guardianEmail}
+                                      onChange={(e) => setAssignForm(f => ({ ...f, guardianEmail: e.target.value }))}
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                                      <Phone className="h-3 w-3" /> Guardian Phone
+                                    </Label>
+                                    <Input
+                                      type="tel"
+                                      placeholder="+1234567890"
+                                      value={assignForm.guardianPhone}
+                                      onChange={(e) => setAssignForm(f => ({ ...f, guardianPhone: e.target.value }))}
+                                    />
+                                  </div>
+                                </div>
+                              )}
                               <div className="flex gap-2">
                                 <Button
                                   size="sm"
                                   onClick={() => {
-                                    if (!assignForm.name || !assignForm.email) {
-                                      toast.error('Name and email are required');
+                                    if (!assignForm.name) {
+                                      toast.error('Name is required');
+                                      return;
+                                    }
+                                    if (!assignForm.isMinor && !assignForm.email) {
+                                      toast.error('Email is required for non-minor attendees');
+                                      return;
+                                    }
+                                    if (assignForm.isMinor && (!assignForm.guardianName || !assignForm.guardianEmail)) {
+                                      toast.error('Guardian name and email are required for minors');
                                       return;
                                     }
                                     updateSeat.mutate(
-                                      { id: seat.id, name: assignForm.name, email: assignForm.email, phone: assignForm.phone },
+                                      {
+                                        id: seat.id,
+                                        name: assignForm.name,
+                                        email: assignForm.isMinor ? '' : assignForm.email,
+                                        phone: assignForm.isMinor ? '' : assignForm.phone,
+                                        is_minor: assignForm.isMinor,
+                                        guardian_name: assignForm.isMinor ? assignForm.guardianName : '',
+                                        guardian_email: assignForm.isMinor ? assignForm.guardianEmail : '',
+                                        guardian_phone: assignForm.isMinor ? assignForm.guardianPhone : '',
+                                      },
                                       {
                                         onSuccess: () => {
                                           // Now check in the seat
@@ -316,7 +394,7 @@ export default function CheckIn() {
                                                   setTicketNumber('');
                                                   setSelectedSeatId(null);
                                                   setAssigningId(null);
-                                                  setAssignForm({ name: '', email: '', phone: '' });
+                                                  setAssignForm({ name: '', email: '', phone: '', isMinor: false, guardianName: '', guardianEmail: '', guardianPhone: '' });
                                                 },
                                               });
                                             },
