@@ -4,9 +4,14 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { useEvents } from '@/hooks/useEvents';
 import { useDeleteOrder } from '@/hooks/useOrders';
 import { format } from 'date-fns';
-import { Trash2 } from 'lucide-react';
+import { Trash2, ExternalLink, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,6 +72,7 @@ export function OrdersTable({ orders }: OrdersTableProps) {
             <TableHead className="font-display">Total</TableHead>
             <TableHead className="font-display">Status</TableHead>
             <TableHead className="font-display">Date</TableHead>
+            <TableHead className="font-display">Seats</TableHead>
             <TableHead className="font-display w-[60px]"></TableHead>
           </TableRow>
         </TableHeader>
@@ -90,6 +96,26 @@ export function OrdersTable({ orders }: OrdersTableProps) {
               </TableCell>
               <TableCell className="text-muted-foreground">
                 {format(new Date(order.createdAt), 'MMM d, yyyy')}
+              </TableCell>
+              <TableCell>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="gap-1.5 text-primary"
+                      onClick={() => {
+                        const url = `https://ticket.trysaasyway.com/orders/${order.id}`;
+                        navigator.clipboard.writeText(url);
+                        toast.success('Seat assignment link copied!');
+                      }}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      Copy Link
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Copy seat assignment link</TooltipContent>
+                </Tooltip>
               </TableCell>
               <TableCell>
                 <AlertDialog>

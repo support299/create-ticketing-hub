@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { QrCode, Check, X, Search, User, Ticket, Camera } from 'lucide-react';
+import { QrCode, Check, X, Search, User, Ticket, Loader2 } from 'lucide-react';
 import { useFindAttendeeByTicket, useCheckInAttendee } from '@/hooks/useAttendees';
+import { useSeatAssignmentsByAttendee, useCheckInSeat } from '@/hooks/useSeatAssignments';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Attendee, Contact } from '@/types';
@@ -18,9 +19,16 @@ interface CheckInResult {
 export default function CheckIn() {
   const [ticketNumber, setTicketNumber] = useState('');
   const [result, setResult] = useState<CheckInResult | null>(null);
-  
+  const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
+
   const findAttendee = useFindAttendeeByTicket();
   const checkInMutation = useCheckInAttendee();
+  const checkInSeat = useCheckInSeat();
+
+  // Fetch seat assignments when we have an attendee
+  const { data: seats = [], isLoading: seatsLoading } = useSeatAssignmentsByAttendee(
+    result?.attendee?.id
+  );
 
   const handleLookup = (ticket: string) => {
     const trimmed = ticket.trim();
@@ -30,6 +38,7 @@ export default function CheckIn() {
     }
 
     setTicketNumber(trimmed);
+    setSelectedSeatId(null);
 
     findAttendee.mutate(trimmed, {
       onSuccess: (attendee) => {
@@ -47,7 +56,7 @@ export default function CheckIn() {
           success: hasCapacity,
           attendee,
           message: hasCapacity
-            ? `Ticket verified! Checked in ${attendee.checkInCount}/${attendee.totalTickets}.`
+            ? `Ticket verified! Select an attendee to check in.`
             : `All ${attendee.totalTickets} tickets already checked in.`,
         });
       },
@@ -67,20 +76,33 @@ export default function CheckIn() {
   };
 
   const handleCheckIn = () => {
-    if (result?.attendee) {
-      checkInMutation.mutate(result.attendee.id, {
-        onSuccess: () => {
-          toast.success('Check-in complete!', {
-            description: `${result.attendee!.contact.name} has been checked in.`,
-          });
-          setResult(null);
-          setTicketNumber('');
-        },
-        onError: () => {
-          toast.error('Failed to check in');
-        },
-      });
+    if (!result?.attendee || !selectedSeatId) {
+      toast.error('Please select an attendee to check in');
+      return;
     }
+
+    // Check in both the seat and increment the attendee counter
+    checkInSeat.mutate(selectedSeatId, {
+      onSuccess: () => {
+        checkInMutation.mutate(result.attendee!.id, {
+          onSuccess: () => {
+            const seat = seats.find(s => s.id === selectedSeatId);
+            toast.success('Check-in complete!', {
+              description: `${seat?.name || 'Attendee'} has been checked in.`,
+            });
+            setResult(null);
+            setTicketNumber('');
+            setSelectedSeatId(null);
+          },
+          onError: () => {
+            toast.error('Failed to update check-in count');
+          },
+        });
+      },
+      onError: () => {
+        toast.error('Failed to check in seat');
+      },
+    });
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -88,6 +110,11 @@ export default function CheckIn() {
       handleSearch();
     }
   };
+
+  // Filter seats: only show assigned & not yet checked in
+  const availableSeats = seats.filter(s => s.name && !s.checkedInAt);
+  const checkedInSeats = seats.filter(s => !!s.checkedInAt);
+  const unassignedSeats = seats.filter(s => !s.name);
 
   return (
     <MainLayout>
@@ -141,33 +168,35 @@ export default function CheckIn() {
           <div className="max-w-xl mx-auto animate-scale-in">
             <div
               className={cn(
-                'rounded-2xl border-2 p-8 text-center',
+                'rounded-2xl border-2 p-8',
                 result.success
                   ? 'border-success bg-success/5'
                   : 'border-destructive bg-destructive/5'
               )}
             >
-              <div
-                className={cn(
-                  'mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full',
-                  result.success ? 'bg-success/20' : 'bg-destructive/20'
-                )}
-              >
-                {result.success ? (
-                  <Check className="h-8 w-8 text-success" />
-                ) : (
-                  <X className="h-8 w-8 text-destructive" />
-                )}
-              </div>
+              <div className="text-center">
+                <div
+                  className={cn(
+                    'mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full',
+                    result.success ? 'bg-success/20' : 'bg-destructive/20'
+                  )}
+                >
+                  {result.success ? (
+                    <Check className="h-8 w-8 text-success" />
+                  ) : (
+                    <X className="h-8 w-8 text-destructive" />
+                  )}
+                </div>
 
-              <p
-                className={cn(
-                  'text-lg font-semibold mb-4',
-                  result.success ? 'text-success' : 'text-destructive'
-                )}
-              >
-                {result.message}
-              </p>
+                <p
+                  className={cn(
+                    'text-lg font-semibold mb-4',
+                    result.success ? 'text-success' : 'text-destructive'
+                  )}
+                >
+                  {result.message}
+                </p>
+              </div>
 
               {result.attendee && (
                 <div className="space-y-4">
@@ -197,30 +226,104 @@ export default function CheckIn() {
                     </div>
                   </div>
 
+                  {/* Seat Selection */}
                   {result.success && (
-                    <Button
-                      onClick={handleCheckIn}
-                      disabled={checkInMutation.isPending}
-                      size="lg"
-                      className="w-full gradient-primary glow-primary h-14 text-lg"
-                    >
-                      <Check className="h-5 w-5 mr-2" />
-                      {checkInMutation.isPending ? 'Checking in...' : 'Confirm Check-In'}
-                    </Button>
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-sm">Select attendee to check in:</h3>
+                      
+                      {seatsLoading && (
+                        <div className="flex items-center justify-center py-4">
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        </div>
+                      )}
+
+                      {!seatsLoading && availableSeats.length === 0 && unassignedSeats.length > 0 && (
+                        <div className="rounded-xl border border-warning/50 bg-warning/10 p-4 text-center">
+                          <p className="text-sm font-medium text-warning">
+                            No attendees assigned yet. Please assign attendees to seats first.
+                          </p>
+                        </div>
+                      )}
+
+                      {!seatsLoading && availableSeats.length === 0 && unassignedSeats.length === 0 && (
+                        <div className="rounded-xl border border-muted bg-muted/50 p-4 text-center">
+                          <p className="text-sm text-muted-foreground">
+                            All assigned attendees have been checked in.
+                          </p>
+                        </div>
+                      )}
+
+                      {availableSeats.map((seat) => (
+                        <button
+                          key={seat.id}
+                          onClick={() => setSelectedSeatId(seat.id)}
+                          className={cn(
+                            'w-full rounded-xl border p-4 text-left transition-all',
+                            selectedSeatId === seat.id
+                              ? 'border-primary bg-primary/10 ring-2 ring-primary/30'
+                              : 'border-border bg-card hover:border-primary/50'
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={cn(
+                              'flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold',
+                              selectedSeatId === seat.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                            )}>
+                              {seat.seatNumber}
+                            </div>
+                            <div>
+                              <p className="font-medium">{seat.name}</p>
+                              <p className="text-xs text-muted-foreground">{seat.email}</p>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+
+                      {checkedInSeats.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-xs text-muted-foreground mb-2">Already checked in:</p>
+                          {checkedInSeats.map((seat) => (
+                            <div key={seat.id} className="rounded-xl border border-success/30 bg-success/5 p-3 mb-2 flex items-center gap-3 opacity-60">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-success/20 text-success text-xs font-bold">
+                                <Check className="h-3.5 w-3.5" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium">{seat.name}</p>
+                                <p className="text-xs text-muted-foreground">{seat.email}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {selectedSeatId && (
+                        <Button
+                          onClick={handleCheckIn}
+                          disabled={checkInSeat.isPending || checkInMutation.isPending}
+                          size="lg"
+                          className="w-full gradient-primary glow-primary h-14 text-lg"
+                        >
+                          <Check className="h-5 w-5 mr-2" />
+                          {checkInSeat.isPending || checkInMutation.isPending ? 'Checking in...' : 'Confirm Check-In'}
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
 
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setResult(null);
-                  setTicketNumber('');
-                }}
-                className="mt-4"
-              >
-                Search Another Ticket
-              </Button>
+              <div className="text-center mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setResult(null);
+                    setTicketNumber('');
+                    setSelectedSeatId(null);
+                  }}
+                >
+                  Search Another Ticket
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -237,11 +340,11 @@ export default function CheckIn() {
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary">•</span>
-                  Ticket numbers are case-insensitive
+                  Each attendee must be assigned to a seat before check-in
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary">•</span>
-                  Each ticket can only be used once for check-in
+                  Select the specific attendee to check in from the list
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-primary">•</span>

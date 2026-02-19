@@ -197,6 +197,50 @@ export type Database = {
           },
         ]
       }
+      seat_assignments: {
+        Row: {
+          attendee_id: string
+          checked_in_at: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string | null
+          phone: string | null
+          seat_number: number
+          updated_at: string
+        }
+        Insert: {
+          attendee_id: string
+          checked_in_at?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
+          seat_number: number
+          updated_at?: string
+        }
+        Update: {
+          attendee_id?: string
+          checked_in_at?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          phone?: string | null
+          seat_number?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seat_assignments_attendee_id_fkey"
+            columns: ["attendee_id"]
+            isOneToOne: false
+            referencedRelation: "attendees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

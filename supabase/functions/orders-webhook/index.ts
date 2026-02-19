@@ -141,6 +141,21 @@ Deno.serve(async (req) => {
       throw new Error('Failed to create attendee');
     }
 
+    // 4b. Create seat assignment rows for each ticket
+    const seatRows = Array.from({ length: quantity }, (_, i) => ({
+      attendee_id: attendeeResult.id,
+      seat_number: i + 1,
+    }));
+
+    const { error: seatError } = await supabase
+      .from('seat_assignments')
+      .insert(seatRows);
+
+    if (seatError) {
+      console.error('Failed to create seat assignments:', seatError);
+      // Non-fatal: seats can be created later
+    }
+
     // 5. Update event tickets_sold count
     const { error: updateError } = await supabase
       .from('events')
