@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Undo2, Loader2 } from 'lucide-react';
+import { Check, Undo2, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
@@ -18,8 +18,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useCheckOutSeat } from '@/hooks/useSeatAssignments';
-import { useCheckOutAttendee } from '@/hooks/useAttendees';
+import { useCheckInSeat, useCheckOutSeat } from '@/hooks/useSeatAssignments';
+import { useCheckInAttendee, useCheckOutAttendee } from '@/hooks/useAttendees';
 import { useQueryClient } from '@tanstack/react-query';
 
 interface AttendanceRecord {
@@ -92,6 +92,8 @@ function useAttendanceRecords() {
 
 export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
   const { data: records = [], isLoading } = useAttendanceRecords();
+  const checkInSeat = useCheckInSeat();
+  const checkInAttendee = useCheckInAttendee();
   const checkOutSeat = useCheckOutSeat();
   const checkOutAttendee = useCheckOutAttendee();
   const queryClient = useQueryClient();
@@ -107,6 +109,22 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
       r.mainPurchaser.toLowerCase().includes(q)
     );
   }, [records, searchQuery]);
+
+  const handleCheckIn = (record: AttendanceRecord) => {
+    checkInSeat.mutate(record.seatId, {
+      onSuccess: () => {
+        checkInAttendee.mutate(record.attendeeId, {
+          onSuccess: () => {
+            toast.success('Checked in successfully', {
+              description: `${record.name} has been checked in.`,
+            });
+            queryClient.invalidateQueries({ queryKey: ['attendance_records'] });
+          },
+        });
+      },
+      onError: () => toast.error('Failed to check in'),
+    });
+  };
 
   const handleCheckOut = (record: AttendanceRecord) => {
     checkOutSeat.mutate(record.seatId, {
@@ -172,24 +190,39 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
                 )}
               </TableCell>
               <TableCell>
-                {record.checkedInAt ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-warning hover:text-warning hover:bg-warning/10"
-                        onClick={() => handleCheckOut(record)}
-                        disabled={checkOutSeat.isPending}
-                      >
-                        <Undo2 className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Check Out</TooltipContent>
-                  </Tooltip>
-                ) : (
-                  <span className="text-muted-foreground text-xs">—</span>
-                )}
+                <div className="flex items-center gap-1">
+                  {record.checkedInAt ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-warning hover:text-warning hover:bg-warning/10"
+                          onClick={() => handleCheckOut(record)}
+                          disabled={checkOutSeat.isPending}
+                        >
+                          <Undo2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Check Out</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-success hover:text-success hover:bg-success/10"
+                          onClick={() => handleCheckIn(record)}
+                          disabled={checkInSeat.isPending}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Check In</TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
               </TableCell>
             </TableRow>
           ))}
