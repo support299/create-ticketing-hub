@@ -183,7 +183,7 @@ function SeatCheckInDialog({
               eventName: attendee.eventTitle,
               locationId: attendee.locationId || '',
             });
-            toast.success('Check-in complete!', {
+            toast.success('Entry check in complete!', {
               description: `${seat?.name || 'Attendee'} has been checked in.`,
             });
             setSelectedSeatId(null);
@@ -191,7 +191,7 @@ function SeatCheckInDialog({
           },
         });
       },
-      onError: () => toast.error('Failed to check in seat'),
+      onError: () => toast.error('Failed to complete entry check in'),
     });
   };
 
@@ -232,7 +232,7 @@ function SeatCheckInDialog({
                     eventName: attendee.eventTitle,
                     locationId: attendee.locationId || '',
                   });
-                  toast.success('Check-in complete!', {
+                  toast.success('Entry check in complete!', {
                     description: `${assignForm.name} has been checked in.`,
                   });
                   setAssigningId(null);
@@ -241,7 +241,7 @@ function SeatCheckInDialog({
                 },
               });
             },
-            onError: () => toast.error('Failed to check in seat'),
+            onError: () => toast.error('Failed to complete entry check in'),
           });
         },
         onError: () => toast.error('Failed to assign seat'),
@@ -253,7 +253,7 @@ function SeatCheckInDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-display">Select Attendee to Check In</DialogTitle>
+          <DialogTitle className="font-display">Select Attendee for Entry Check In</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-2">
           <p className="text-sm text-muted-foreground">
@@ -286,7 +286,7 @@ function SeatCheckInDialog({
                       setAssignForm({ name: '', email: '', phone: '', isMinor: false, guardianName: '', guardianEmail: '', guardianPhone: '' });
                     }}
                   >
-                    Assign & Check In
+                    Assign & Entry Check In
                   </Button>
                 )}
               </div>
@@ -451,7 +451,7 @@ function SeatCheckInDialog({
               className="w-full gradient-primary glow-primary h-12"
             >
               <Check className="h-5 w-5 mr-2" />
-              {checkInSeat.isPending ? 'Checking in...' : 'Confirm Check-In'}
+              {checkInSeat.isPending ? 'Processing...' : 'Confirm Entry Check In'}
             </Button>
           )}
 
@@ -487,7 +487,7 @@ export function AttendeesTable({ attendees, onCheckOut }: AttendeesTableProps) {
               <TableHead className="font-display">Ticket #</TableHead>
               <TableHead className="font-display">Buyer Name</TableHead>
               <TableHead className="font-display">Event</TableHead>
-              <TableHead className="font-display">Check-ins</TableHead>
+              <TableHead className="font-display">Entry Check Ins</TableHead>
               <TableHead className="font-display">Status</TableHead>
               <TableHead className="font-display">Actions</TableHead>
             </TableRow>
@@ -554,7 +554,7 @@ export function AttendeesTable({ attendees, onCheckOut }: AttendeesTableProps) {
                               <Check className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Check In</TooltipContent>
+                          <TooltipContent>Entry Check In</TooltipContent>
                         </Tooltip>
                       )}
                       {canCheckOut && (
@@ -569,7 +569,7 @@ export function AttendeesTable({ attendees, onCheckOut }: AttendeesTableProps) {
                               <Undo2 className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Undo Check-in</TooltipContent>
+                          <TooltipContent>Undo Entry Check In</TooltipContent>
                         </Tooltip>
                       )}
                     </div>
@@ -598,7 +598,7 @@ export function AttendeesTable({ attendees, onCheckOut }: AttendeesTableProps) {
                 <p className="text-sm text-muted-foreground">{selectedAttendee.contact.name}</p>
                 <p className="text-xs text-muted-foreground">{selectedAttendee.eventTitle}</p>
                 <p className="text-sm font-medium mt-2">
-                  Check-ins: {selectedAttendee.checkInCount}/{selectedAttendee.totalTickets}
+                  Entry Check Ins: {selectedAttendee.checkInCount}/{selectedAttendee.totalTickets}
                 </p>
               </div>
             </div>

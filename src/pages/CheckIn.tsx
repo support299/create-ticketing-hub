@@ -63,7 +63,7 @@ export default function CheckIn() {
           success: hasCapacity,
           attendee,
           message: hasCapacity
-            ? `Ticket verified! Select an attendee to check in.`
+            ? `Ticket verified! Select an attendee for entry check in.`
             : `All ${attendee.totalTickets} tickets already checked in.`,
         });
       },
@@ -84,7 +84,7 @@ export default function CheckIn() {
 
   const handleCheckIn = () => {
     if (!result?.attendee || !selectedSeatId) {
-      toast.error('Please select an attendee to check in');
+      toast.error('Please select an attendee for entry check in');
       return;
     }
 
@@ -105,7 +105,7 @@ export default function CheckIn() {
               eventName: result.attendee!.eventTitle,
               locationId: result.attendee!.locationId || '',
             });
-            toast.success('Check-in complete!', {
+            toast.success('Entry check in complete!', {
               description: `${seat?.name || 'Attendee'} has been checked in.`,
             });
             setResult(null);
@@ -113,12 +113,12 @@ export default function CheckIn() {
             setSelectedSeatId(null);
           },
           onError: () => {
-            toast.error('Failed to update check-in count');
+            toast.error('Failed to update entry check in count');
           },
         });
       },
       onError: () => {
-        toast.error('Failed to check in seat');
+        toast.error('Failed to complete entry check in');
       },
     });
   };
@@ -144,9 +144,9 @@ export default function CheckIn() {
               <QrCode className="h-8 w-8 text-primary-foreground" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold font-display">Check-In Station</h1>
+          <h1 className="text-3xl font-bold font-display">Entry Check In Station</h1>
           <p className="text-muted-foreground mt-2">
-            Enter a ticket number or scan a QR code to check in attendees
+            Enter a ticket number or scan a QR code for entry check in
           </p>
         </div>
 
@@ -247,7 +247,7 @@ export default function CheckIn() {
                   {/* Seat Selection */}
                   {result.success && (
                     <div className="space-y-3">
-                      <h3 className="font-semibold text-sm">Select attendee to check in:</h3>
+                      <h3 className="font-semibold text-sm">Select attendee for entry check in:</h3>
                       
                       {seatsLoading && (
                         <div className="flex items-center justify-center py-4">
@@ -275,7 +275,7 @@ export default function CheckIn() {
                                   setAssignForm({ name: '', email: '', phone: '', isMinor: false, guardianName: '', guardianEmail: '', guardianPhone: '' });
                                 }}
                               >
-                                Assign & Check In
+                                Assign & Entry Check In
                               </Button>
                             )}
                           </div>
@@ -411,7 +411,7 @@ export default function CheckIn() {
                                                     eventName: result!.attendee!.eventTitle,
                                                     locationId: result!.attendee!.locationId || '',
                                                   });
-                                                  toast.success('Check-in complete!', {
+                                                  toast.success('Entry check in complete!', {
                                                     description: `${assignForm.name} has been checked in.`,
                                                   });
                                                   setResult(null);
@@ -422,7 +422,7 @@ export default function CheckIn() {
                                                 },
                                               });
                                             },
-                                            onError: () => toast.error('Failed to check in seat'),
+                                            onError: () => toast.error('Failed to complete entry check in'),
                                           });
                                         },
                                         onError: () => toast.error('Failed to assign seat'),

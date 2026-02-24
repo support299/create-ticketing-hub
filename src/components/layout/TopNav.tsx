@@ -9,7 +9,7 @@ const navItems = [
   { icon: Calendar, label: 'Events', href: '/events' },
   { icon: ShoppingCart, label: 'Orders', href: '/orders' },
   { icon: Users, label: 'Attendees', href: '/attendees' },
-  { icon: QrCode, label: 'Check-in', href: '/check-in' },
+  { icon: QrCode, label: 'Entry Check In', href: '/check-in' },
 ];
 
 export function TopNav() {
