@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Attendee, Contact } from '@/types';
 import { confirmContactOnCheckIn, splitName } from '@/lib/confirmContact';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -6,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Check, QrCode, Undo2, Loader2, User, Mail, Phone } from 'lucide-react';
+import { Check, QrCode, Undo2, Loader2, User, Mail, Phone, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
@@ -422,6 +423,7 @@ function SeatCheckInDialog({
 }
 
 export function AttendeesTable({ attendees, onCheckOut }: AttendeesTableProps) {
+  const navigate = useNavigate();
   const [selectedAttendee, setSelectedAttendee] = useState<(Attendee & { contact: Contact }) | null>(null);
   const [checkInAttendee, setCheckInAttendee] = useState<(Attendee & { contact: Contact }) | null>(null);
   const [checkOutAttendee, setCheckOutAttendee] = useState<(Attendee & { contact: Contact }) | null>(null);
@@ -472,6 +474,18 @@ export function AttendeesTable({ attendees, onCheckOut }: AttendeesTableProps) {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/orders/${attendee.ticketNumber}`)}
+                          >
+                            <Users className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Manage Seats</TooltipContent>
+                      </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
