@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Attendee, Contact } from '@/types';
 import { confirmContactOnCheckIn, splitName } from '@/lib/confirmContact';
 import { StatusBadge } from '@/components/ui/status-badge';
@@ -468,6 +468,7 @@ function SeatCheckInDialog({
 
 export function AttendeesTable({ attendees, onCheckOut }: AttendeesTableProps) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [selectedAttendee, setSelectedAttendee] = useState<(Attendee & { contact: Contact }) | null>(null);
   const [checkInAttendee, setCheckInAttendee] = useState<(Attendee & { contact: Contact }) | null>(null);
   const [checkOutAttendee, setCheckOutAttendee] = useState<(Attendee & { contact: Contact }) | null>(null);
@@ -523,7 +524,11 @@ export function AttendeesTable({ attendees, onCheckOut }: AttendeesTableProps) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => navigate(`/orders/${attendee.ticketNumber}`)}
+                            onClick={() => {
+                              const locationId = searchParams.get('id');
+                              const path = `/orders/${attendee.ticketNumber}${locationId ? `?id=${locationId}` : ''}`;
+                              navigate(path);
+                            }}
                           >
                             <Users className="h-4 w-4" />
                           </Button>
