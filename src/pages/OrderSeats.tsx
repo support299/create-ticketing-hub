@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Check, Ticket, User, Mail, Phone, Loader2, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { Check, Ticket, User, Mail, Phone, Loader2, ArrowLeft } from 'lucide-react';
 
 interface SeatForm {
   name: string;
@@ -111,22 +111,18 @@ export default function OrderSeats() {
       toast.error('Phone number with country code is required');
       return;
     }
-    if (form.isMinor && (!form.guardianName.trim() || !form.guardianPhone.trim())) {
-      toast.error('Guardian name and phone are required for children');
-      return;
-    }
 
     setSavingId(seatId);
     updateSeat.mutate(
       {
         id: seatId,
         name: form.name.trim(),
-        email: form.isMinor ? '' : form.email.trim(),
-        phone: form.isMinor ? '' : form.phone.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
         is_minor: form.isMinor,
-        guardian_name: form.isMinor ? form.guardianName.trim() : '',
-        guardian_email: form.isMinor ? form.guardianEmail.trim() : '',
-        guardian_phone: form.isMinor ? form.guardianPhone.trim() : '',
+        guardian_name: '',
+        guardian_email: '',
+        guardian_phone: '',
       },
       {
         onSuccess: () => {
@@ -264,70 +260,30 @@ export default function OrderSeats() {
                       </Label>
                     </div>
 
-                    {!form.isMinor ? (
-                      <>
-                        <div>
-                          <Label className="text-xs flex items-center gap-1.5 mb-1.5">
-                            <Phone className="h-3 w-3" /> Phone (with country code) *
-                          </Label>
-                          <Input
-                            type="tel"
-                            placeholder="+1234567890"
-                            value={form.phone}
-                            onChange={(e) => setFormValue(seat.id, 'phone', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs flex items-center gap-1.5 mb-1.5">
-                            <Mail className="h-3 w-3" /> Email
-                          </Label>
-                          <Input
-                            type="email"
-                            placeholder="john@example.com"
-                            value={form.email}
-                            onChange={(e) => setFormValue(seat.id, 'email', e.target.value)}
-                          />
-                        </div>
-                      </>
-                    ) : (
-                      <div className="rounded-lg border border-dashed border-muted-foreground/30 p-3 space-y-3">
-                        <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                          <ShieldCheck className="h-3.5 w-3.5" /> Guardian / Parent Details
-                        </p>
-                        <div>
-                          <Label className="text-xs flex items-center gap-1.5 mb-1.5">
-                            <User className="h-3 w-3" /> Guardian Name *
-                          </Label>
-                          <Input
-                            placeholder="Jane Doe"
-                            value={form.guardianName}
-                            onChange={(e) => setFormValue(seat.id, 'guardianName', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs flex items-center gap-1.5 mb-1.5">
-                            <Phone className="h-3 w-3" /> Guardian Phone (with country code) *
-                          </Label>
-                          <Input
-                            type="tel"
-                            placeholder="+1234567890"
-                            value={form.guardianPhone}
-                            onChange={(e) => setFormValue(seat.id, 'guardianPhone', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs flex items-center gap-1.5 mb-1.5">
-                            <Mail className="h-3 w-3" /> Guardian Email
-                          </Label>
-                          <Input
-                            type="email"
-                            placeholder="jane@example.com"
-                            value={form.guardianEmail}
-                            onChange={(e) => setFormValue(seat.id, 'guardianEmail', e.target.value)}
-                          />
-                        </div>
+                    <>
+                      <div>
+                        <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                          <Phone className="h-3 w-3" /> Phone (with country code) {!form.isMinor && '*'}
+                        </Label>
+                        <Input
+                          type="tel"
+                          placeholder="+1234567890"
+                          value={form.phone}
+                          onChange={(e) => setFormValue(seat.id, 'phone', e.target.value)}
+                        />
                       </div>
-                    )}
+                      <div>
+                        <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                          <Mail className="h-3 w-3" /> Email
+                        </Label>
+                        <Input
+                          type="email"
+                          placeholder="john@example.com"
+                          value={form.email}
+                          onChange={(e) => setFormValue(seat.id, 'email', e.target.value)}
+                        />
+                      </div>
+                    </>
                   </div>
                 )}
 
