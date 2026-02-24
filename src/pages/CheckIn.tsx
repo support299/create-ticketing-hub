@@ -306,23 +306,24 @@ export default function CheckIn() {
                                 <>
                                   <div>
                                     <Label className="text-xs flex items-center gap-1.5 mb-1.5">
-                                      <Mail className="h-3 w-3" /> Email *
+                                      <Phone className="h-3 w-3" /> Phone (with country code) *
+                                    </Label>
+                                    <Input
+                                      type="tel"
+                                      value={assignForm.phone}
+                                      onChange={(e) => setAssignForm(f => ({ ...f, phone: e.target.value }))}
+                                      placeholder="+1234567890"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                                      <Mail className="h-3 w-3" /> Email
                                     </Label>
                                     <Input
                                       type="email"
                                       value={assignForm.email}
                                       onChange={(e) => setAssignForm(f => ({ ...f, email: e.target.value }))}
                                       placeholder="email@example.com"
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label className="text-xs flex items-center gap-1.5 mb-1.5">
-                                      <Phone className="h-3 w-3" /> Phone
-                                    </Label>
-                                    <Input
-                                      value={assignForm.phone}
-                                      onChange={(e) => setAssignForm(f => ({ ...f, phone: e.target.value }))}
-                                      placeholder="Phone number"
                                     />
                                   </div>
                                 </>
@@ -343,24 +344,24 @@ export default function CheckIn() {
                                   </div>
                                   <div>
                                     <Label className="text-xs flex items-center gap-1.5 mb-1.5">
-                                      <Mail className="h-3 w-3" /> Guardian Email *
-                                    </Label>
-                                    <Input
-                                      type="email"
-                                      placeholder="jane@example.com"
-                                      value={assignForm.guardianEmail}
-                                      onChange={(e) => setAssignForm(f => ({ ...f, guardianEmail: e.target.value }))}
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label className="text-xs flex items-center gap-1.5 mb-1.5">
-                                      <Phone className="h-3 w-3" /> Guardian Phone
+                                      <Phone className="h-3 w-3" /> Guardian Phone (with country code) *
                                     </Label>
                                     <Input
                                       type="tel"
                                       placeholder="+1234567890"
                                       value={assignForm.guardianPhone}
                                       onChange={(e) => setAssignForm(f => ({ ...f, guardianPhone: e.target.value }))}
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                                      <Mail className="h-3 w-3" /> Guardian Email
+                                    </Label>
+                                    <Input
+                                      type="email"
+                                      placeholder="jane@example.com"
+                                      value={assignForm.guardianEmail}
+                                      onChange={(e) => setAssignForm(f => ({ ...f, guardianEmail: e.target.value }))}
                                     />
                                   </div>
                                 </div>
@@ -373,12 +374,12 @@ export default function CheckIn() {
                                       toast.error('Name is required');
                                       return;
                                     }
-                                    if (!assignForm.isMinor && !assignForm.email) {
-                                      toast.error('Email is required for non-child attendees');
+                                    if (!assignForm.isMinor && !assignForm.phone) {
+                                      toast.error('Phone number with country code is required');
                                       return;
                                     }
-                                    if (assignForm.isMinor && (!assignForm.guardianName || !assignForm.guardianEmail)) {
-                                      toast.error('Guardian name and email are required for children');
+                                    if (assignForm.isMinor && (!assignForm.guardianName || !assignForm.guardianPhone)) {
+                                      toast.error('Guardian name and phone are required for children');
                                       return;
                                     }
                                     updateSeat.mutate(
