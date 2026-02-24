@@ -1,6 +1,6 @@
 import { Calendar, MapPin, Users, Clock, Copy, Check } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Event } from '@/types';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ interface EventCardProps {
 }
 
 export function EventCard({ event }: EventCardProps) {
+  const [searchParams] = useSearchParams();
   const [copied, setCopied] = useState(false);
   const ticketsSold = event.ticketsSold || 0;
   const revenue = ticketsSold * (event.ticketPrice || 0);
@@ -26,7 +27,7 @@ export function EventCard({ event }: EventCardProps) {
 
   return (
     <Link
-      to={`/events/${event.id}`}
+      to={`/events/${event.id}${searchParams.get('id') ? `?id=${searchParams.get('id')}` : ''}`}
       className="group block overflow-hidden rounded-2xl border border-border bg-card card-hover animate-fade-in"
     >
       {/* Cover Image */}
