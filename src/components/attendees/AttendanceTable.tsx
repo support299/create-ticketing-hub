@@ -143,9 +143,9 @@ function useUnassignSeat() {
 
 const confirmMessages: Record<ConfirmAction['type'], { title: string; description: (name: string) => string; action: string }> = {
   checkin: {
-    title: 'Confirm Check-In',
-    description: (name) => `Are you sure you want to check in ${name}?`,
-    action: 'Check In',
+    title: 'Confirm Entry Check In',
+    description: (name) => `Are you sure you want to do entry check in for ${name}?`,
+    action: 'Entry Check In',
   },
   checkout: {
     title: 'Confirm Check-Out',
@@ -154,7 +154,7 @@ const confirmMessages: Record<ConfirmAction['type'], { title: string; descriptio
   },
   unassign: {
     title: 'Confirm Unassign',
-    description: (name) => `Are you sure you want to unassign ${name} from this seat? This will remove their details and check-in status.`,
+    description: (name) => `Are you sure you want to unassign ${name} from this seat? This will remove their details and entry check in status.`,
     action: 'Unassign',
   },
 };
@@ -209,7 +209,7 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
             },
           });
         },
-        onError: () => toast.error('Failed to check in'),
+        onError: () => toast.error('Failed to complete entry check in'),
       });
     } else if (type === 'checkout') {
       checkOutSeat.mutate(record.seatId, {
@@ -337,7 +337,7 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
                             <Check className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Check In</TooltipContent>
+                        <TooltipContent>Entry Check In</TooltipContent>
                       </Tooltip>
                     )}
                     <Tooltip>
