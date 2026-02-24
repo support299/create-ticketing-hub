@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Check, Ticket, User, Mail, Phone, Loader2, ArrowLeft } from 'lucide-react';
 
@@ -120,9 +121,9 @@ export default function OrderSeats() {
         email: form.email.trim(),
         phone: form.phone.trim(),
         is_minor: form.isMinor,
-        guardian_name: '',
-        guardian_email: '',
-        guardian_phone: '',
+        guardian_name: form.guardianName?.trim() || '',
+        guardian_email: form.guardianEmail?.trim() || '',
+        guardian_phone: form.guardianPhone?.trim() || '',
       },
       {
         onSuccess: () => {
@@ -259,6 +260,53 @@ export default function OrderSeats() {
                         This seat is for a child
                       </Label>
                     </div>
+
+                    {form.isMinor && (() => {
+                      const nonChildSeats = seats.filter(s => s.id !== seat.id && s.name && !s.isMinor);
+                      return nonChildSeats.length > 0 ? (
+                        <div>
+                          <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                            <User className="h-3 w-3" /> Guardian
+                          </Label>
+                          <Select
+                            value={form.guardianName ? nonChildSeats.find(s => s.name === form.guardianName && s.phone === form.guardianPhone)?.id || '' : ''}
+                            onValueChange={(selectedId) => {
+                              const guardian = nonChildSeats.find(s => s.id === selectedId);
+                              if (guardian) {
+                                setEditingForms(prev => ({
+                                  ...prev,
+                                  [seat.id]: {
+                                    ...getFormValue(seat.id, seat),
+                                    isMinor: true,
+                                    guardianName: guardian.name || '',
+                                    guardianEmail: guardian.email || '',
+                                    guardianPhone: guardian.phone || '',
+                                  },
+                                }));
+                              }
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a guardian" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {nonChildSeats.map(s => (
+                                <SelectItem key={s.id} value={s.id}>
+                                  {s.name} {s.phone ? `(${s.phone})` : ''}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {form.guardianName && (
+                            <div className="mt-2 rounded-lg bg-muted/50 p-3 text-xs space-y-1">
+                              <p><span className="text-muted-foreground">Name:</span> {form.guardianName}</p>
+                              {form.guardianPhone && <p><span className="text-muted-foreground">Phone:</span> {form.guardianPhone}</p>}
+                              {form.guardianEmail && <p><span className="text-muted-foreground">Email:</span> {form.guardianEmail}</p>}
+                            </div>
+                          )}
+                        </div>
+                      ) : null;
+                    })()}
 
                     <>
                       <div>
