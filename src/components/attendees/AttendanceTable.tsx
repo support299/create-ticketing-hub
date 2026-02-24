@@ -281,8 +281,8 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="text-sm">{record.isMinor ? '—' : record.email}</TableCell>
-                <TableCell className="text-sm">{record.isMinor ? '—' : (record.phone || '—')}</TableCell>
+                <TableCell className="text-sm">{record.email || '—'}</TableCell>
+                <TableCell className="text-sm">{record.phone || '—'}</TableCell>
                 <TableCell className="max-w-[200px] truncate">{record.eventTitle}</TableCell>
                 <TableCell className="text-sm">{record.mainPurchaser}</TableCell>
                 <TableCell>
