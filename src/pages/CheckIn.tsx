@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { QrCode, Check, X, Search, User, Ticket, Loader2, Mail, Phone } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFindAttendeeByTicket, useCheckInAttendee } from '@/hooks/useAttendees';
 import { useSeatAssignmentsByAttendee, useCheckInSeat, useUpdateSeatAssignment } from '@/hooks/useSeatAssignments';
 import { toast } from 'sonner';
@@ -302,6 +303,49 @@ export default function CheckIn() {
                                 </Label>
                               </div>
 
+                              {assignForm.isMinor && (() => {
+                                const assignedNonChildSeats = seats.filter(s => s.id !== seat.id && s.name && !s.isMinor);
+                                return assignedNonChildSeats.length > 0 ? (
+                                  <div>
+                                    <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                                      <User className="h-3 w-3" /> Guardian
+                                    </Label>
+                                    <Select
+                                      value={assignForm.guardianName ? assignedNonChildSeats.find(s => s.name === assignForm.guardianName && s.phone === assignForm.guardianPhone)?.id || '' : ''}
+                                      onValueChange={(selectedId) => {
+                                        const guardian = assignedNonChildSeats.find(s => s.id === selectedId);
+                                        if (guardian) {
+                                          setAssignForm(f => ({
+                                            ...f,
+                                            guardianName: guardian.name || '',
+                                            guardianEmail: guardian.email || '',
+                                            guardianPhone: guardian.phone || '',
+                                          }));
+                                        }
+                                      }}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select a guardian" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {assignedNonChildSeats.map(s => (
+                                          <SelectItem key={s.id} value={s.id}>
+                                            {s.name} {s.phone ? `(${s.phone})` : ''}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    {assignForm.guardianName && (
+                                      <div className="mt-2 rounded-lg bg-muted/50 p-3 text-xs space-y-1">
+                                        <p><span className="text-muted-foreground">Name:</span> {assignForm.guardianName}</p>
+                                        {assignForm.guardianPhone && <p><span className="text-muted-foreground">Phone:</span> {assignForm.guardianPhone}</p>}
+                                        {assignForm.guardianEmail && <p><span className="text-muted-foreground">Email:</span> {assignForm.guardianEmail}</p>}
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : null;
+                              })()}
+
                               <>
                                 <div>
                                   <Label className="text-xs flex items-center gap-1.5 mb-1.5">
@@ -339,15 +383,15 @@ export default function CheckIn() {
                                       return;
                                     }
                                     updateSeat.mutate(
-                                      {
+                                       {
                                         id: seat.id,
                                         name: assignForm.name,
                                         email: assignForm.email,
                                         phone: assignForm.phone,
                                         is_minor: assignForm.isMinor,
-                                        guardian_name: '',
-                                        guardian_email: '',
-                                        guardian_phone: '',
+                                        guardian_name: assignForm.guardianName || '',
+                                        guardian_email: assignForm.guardianEmail || '',
+                                        guardian_phone: assignForm.guardianPhone || '',
                                       },
                                       {
                                         onSuccess: () => {
