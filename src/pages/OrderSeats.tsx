@@ -107,12 +107,12 @@ export default function OrderSeats() {
       toast.error('Name is required');
       return;
     }
-    if (!form.isMinor && !form.email.trim()) {
-      toast.error('Email is required for non-child attendees');
+    if (!form.isMinor && !form.phone.trim()) {
+      toast.error('Phone number with country code is required');
       return;
     }
-    if (form.isMinor && (!form.guardianName.trim() || !form.guardianEmail.trim())) {
-      toast.error('Guardian name and email are required for children');
+    if (form.isMinor && (!form.guardianName.trim() || !form.guardianPhone.trim())) {
+      toast.error('Guardian name and phone are required for children');
       return;
     }
 
@@ -202,13 +202,13 @@ export default function OrderSeats() {
           </p>
 
           {[...seats].sort((a, b) => {
-            const aAssigned = !!a.name && (!!a.email || a.isMinor);
-            const bAssigned = !!b.name && (!!b.email || b.isMinor);
+          const aAssigned = !!a.name && (!!a.phone || a.isMinor);
+            const bAssigned = !!b.name && (!!b.phone || b.isMinor);
             if (aAssigned === bAssigned) return a.seatNumber - b.seatNumber;
             return aAssigned ? 1 : -1;
           }).map((seat) => {
             const form = getFormValue(seat.id, seat);
-            const isAssigned = !!seat.name && (!!seat.email || seat.isMinor);
+            const isAssigned = !!seat.name && (!!seat.phone || seat.isMinor);
             const isDirty = !!editingForms[seat.id];
 
             return (
@@ -268,24 +268,24 @@ export default function OrderSeats() {
                       <>
                         <div>
                           <Label className="text-xs flex items-center gap-1.5 mb-1.5">
-                            <Mail className="h-3 w-3" /> Email *
-                          </Label>
-                          <Input
-                            type="email"
-                            placeholder="john@example.com"
-                            value={form.email}
-                            onChange={(e) => setFormValue(seat.id, 'email', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs flex items-center gap-1.5 mb-1.5">
-                            <Phone className="h-3 w-3" /> Phone
+                            <Phone className="h-3 w-3" /> Phone (with country code) *
                           </Label>
                           <Input
                             type="tel"
                             placeholder="+1234567890"
                             value={form.phone}
                             onChange={(e) => setFormValue(seat.id, 'phone', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                            <Mail className="h-3 w-3" /> Email
+                          </Label>
+                          <Input
+                            type="email"
+                            placeholder="john@example.com"
+                            value={form.email}
+                            onChange={(e) => setFormValue(seat.id, 'email', e.target.value)}
                           />
                         </div>
                       </>
@@ -306,24 +306,24 @@ export default function OrderSeats() {
                         </div>
                         <div>
                           <Label className="text-xs flex items-center gap-1.5 mb-1.5">
-                            <Mail className="h-3 w-3" /> Guardian Email *
-                          </Label>
-                          <Input
-                            type="email"
-                            placeholder="jane@example.com"
-                            value={form.guardianEmail}
-                            onChange={(e) => setFormValue(seat.id, 'guardianEmail', e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs flex items-center gap-1.5 mb-1.5">
-                            <Phone className="h-3 w-3" /> Guardian Phone
+                            <Phone className="h-3 w-3" /> Guardian Phone (with country code) *
                           </Label>
                           <Input
                             type="tel"
                             placeholder="+1234567890"
                             value={form.guardianPhone}
                             onChange={(e) => setFormValue(seat.id, 'guardianPhone', e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs flex items-center gap-1.5 mb-1.5">
+                            <Mail className="h-3 w-3" /> Guardian Email
+                          </Label>
+                          <Input
+                            type="email"
+                            placeholder="jane@example.com"
+                            value={form.guardianEmail}
+                            onChange={(e) => setFormValue(seat.id, 'guardianEmail', e.target.value)}
                           />
                         </div>
                       </div>
