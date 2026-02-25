@@ -50,6 +50,25 @@ export function useCreateBundleOption() {
   });
 }
 
+export function useUpdateBundleOption() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, eventId: _eventId, packageName, packagePrice }: { id: string; eventId: string; packageName: string; packagePrice: number }) => {
+      const { data, error } = await supabase
+        .from('bundle_options')
+        .update({ package_name: packageName, package_price: packagePrice })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return mapRow(data);
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['bundle-options', data.eventId] });
+    },
+  });
+}
+
 export function useDeleteBundleOption() {
   const qc = useQueryClient();
   return useMutation({
