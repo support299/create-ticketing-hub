@@ -46,12 +46,12 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
         bundleQuantity: bundleQty,
       },
       {
-        onSuccess: async () => {
+        onSuccess: async (createdBundle) => {
           toast.success('Bundle option added');
 
           if (ghlProductId && locationId) {
             try {
-              const { error } = await supabase.functions.invoke('sync-bundle-price', {
+              const { data: syncData, error } = await supabase.functions.invoke('sync-bundle-price', {
                 body: {
                   ghlProductId,
                   bundleName: name.trim(),
@@ -67,6 +67,14 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
                 toast.error('Bundle saved but failed to sync price to LeadConnector');
               } else {
                 toast.success('Price synced to LeadConnector');
+                // Save the GHL price ID back to the bundle
+                const ghlPriceId = syncData?.data?._id;
+                if (ghlPriceId) {
+                  await supabase
+                    .from('bundle_options')
+                    .update({ ghl_price_id: ghlPriceId })
+                    .eq('id', createdBundle.id);
+                }
               }
             } catch (err) {
               console.error('Error syncing bundle price:', err);

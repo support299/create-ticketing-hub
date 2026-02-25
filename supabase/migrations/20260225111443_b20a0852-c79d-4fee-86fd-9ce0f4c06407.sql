@@ -1,0 +1,1 @@
+ALTER TABLE public.bundle_options ADD COLUMN ghl_price_id text DEFAULT NULL;
