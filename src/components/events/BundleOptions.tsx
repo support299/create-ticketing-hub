@@ -64,9 +64,9 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
               });
               if (error) {
                 console.error('Failed to sync bundle price:', error);
-                toast.error('Bundle saved but failed to sync price to LeadConnector');
+                toast.error('Bundle saved but failed to sync price');
               } else {
-                toast.success('Price synced to LeadConnector');
+                toast.success('Price synced successfully');
                 // Save the GHL price ID back to the bundle
                 const ghlPriceId = syncData?.data?._id;
                 if (ghlPriceId) {
@@ -147,9 +147,9 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
               });
               if (error) {
                 console.error('Failed to sync bundle price update:', error);
-                toast.error('Bundle updated but failed to sync to LeadConnector');
+                toast.error('Bundle updated but failed to sync');
               } else {
-                toast.success('Price updated in LeadConnector');
+                toast.success('Price updated successfully');
               }
             } catch (err) {
               console.error('Error syncing bundle price update:', err);
