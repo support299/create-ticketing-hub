@@ -259,11 +259,20 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                       <Package className="h-5 w-5 text-primary" />
                     </div>
-                    <div>
+                     <div>
                       <p className="font-semibold">{b.packageName}</p>
                       <p className="text-sm text-muted-foreground">
-                        ${b.packagePrice.toFixed(2)} · {b.bundleQuantity} {b.bundleQuantity === 1 ? 'ticket' : 'tickets'}
+                        ${b.packagePrice.toFixed(2)} · {b.bundleQuantity} {b.bundleQuantity === 1 ? 'seat' : 'seats'}
                       </p>
+                      {(() => {
+                        const remaining = (eventCapacity || 0) - (ticketsSold || 0);
+                        const available = Math.floor(remaining / (b.bundleQuantity || 1));
+                        return (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            <span className="font-medium text-foreground">{ticketsSold || 0}</span> seats sold · <span className="font-medium text-foreground">{available}</span> bundles available
+                          </p>
+                        );
+                      })()}
                     </div>
                   </div>
                   <div className="flex gap-1">
