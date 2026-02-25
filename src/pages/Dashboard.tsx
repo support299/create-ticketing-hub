@@ -1,37 +1,49 @@
+import { useState, useMemo } from 'react';
 import { DollarSign, Users, Ticket, Calendar } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { StatCard } from '@/components/ui/stat-card';
 import { EventCard } from '@/components/events/EventCard';
 import { useEvents } from '@/hooks/useEvents';
 import { useOrders } from '@/hooks/useOrders';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMemo } from 'react';
 
 export default function Dashboard() {
   const { data: events = [], isLoading: eventsLoading } = useEvents();
   const { data: orders = [], isLoading: ordersLoading } = useOrders();
+  const [selectedEventId, setSelectedEventId] = useState<string>('all');
 
   const isLoading = eventsLoading || ordersLoading;
 
+  const filteredOrders = useMemo(() => {
+    if (selectedEventId === 'all') return orders;
+    return orders.filter(o => o.eventId === selectedEventId);
+  }, [orders, selectedEventId]);
+
+  const filteredEvents = useMemo(() => {
+    if (selectedEventId === 'all') return events;
+    return events.filter(e => e.id === selectedEventId);
+  }, [events, selectedEventId]);
+
   const stats = useMemo(() => {
-    const totalRevenue = orders
+    const totalRevenue = filteredOrders
       .filter(o => o.status === 'completed')
       .reduce((acc, o) => acc + o.total, 0);
     
-    const totalTicketsSold = events.reduce((acc, e) => acc + (e.ticketsSold || 0), 0);
-    const totalCapacity = events.reduce((acc, e) => acc + e.capacity, 0);
-    const activeEvents = events.filter(e => e.isActive).length;
-    const completedOrders = orders.filter(o => o.status === 'completed').length;
-    const pendingOrders = orders.filter(o => o.status === 'pending').length;
+    const totalTicketsSold = filteredEvents.reduce((acc, e) => acc + (e.ticketsSold || 0), 0);
+    const totalCapacity = filteredEvents.reduce((acc, e) => acc + e.capacity, 0);
+    const activeEvents = filteredEvents.filter(e => e.isActive).length;
+    const completedOrders = filteredOrders.filter(o => o.status === 'completed').length;
+    const pendingOrders = filteredOrders.filter(o => o.status === 'pending').length;
 
     return { totalRevenue, totalTicketsSold, totalCapacity, activeEvents, completedOrders, pendingOrders };
-  }, [events, orders]);
+  }, [filteredEvents, filteredOrders]);
 
   // Generate sales data from orders
   const salesData = useMemo(() => {
-    const grouped = orders
+    const grouped = filteredOrders
       .filter(o => o.status === 'completed')
       .reduce((acc, order) => {
         const date = format(new Date(order.createdAt), 'yyyy-MM-dd');
@@ -44,7 +56,7 @@ export default function Dashboard() {
       }, {} as Record<string, { date: string; revenue: number; tickets: number }>);
 
     return Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date)).slice(-7);
-  }, [orders]);
+  }, [filteredOrders]);
 
   if (isLoading) {
     return (
@@ -65,9 +77,22 @@ export default function Dashboard() {
     <MainLayout>
       <div className="space-y-8 animate-fade-in">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold font-display">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Welcome back! Here's what's happening with your events.</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold font-display">Dashboard</h1>
+            <p className="text-muted-foreground mt-1">Welcome back! Here's what's happening with your events.</p>
+          </div>
+          <Select value={selectedEventId} onValueChange={setSelectedEventId}>
+            <SelectTrigger className="w-48 bg-card">
+              <SelectValue placeholder="All Events" />
+            </SelectTrigger>
+            <SelectContent className="bg-popover z-50">
+              <SelectItem value="all">All Events</SelectItem>
+              {events.map(event => (
+                <SelectItem key={event.id} value={event.id}>{event.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Stats Grid */}
@@ -193,13 +218,13 @@ export default function Dashboard() {
               <p className="text-sm text-muted-foreground">Your upcoming and active events</p>
             </div>
           </div>
-          {events.length === 0 ? (
+          {filteredEvents.length === 0 ? (
             <div className="text-center py-12 rounded-2xl border border-dashed border-border">
               <p className="text-muted-foreground">No events yet. Create your first event!</p>
             </div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {events.slice(0, 6).map((event) => (
+              {filteredEvents.slice(0, 6).map((event) => (
                 <EventCard 
                   key={event.id} 
                   event={event} 
