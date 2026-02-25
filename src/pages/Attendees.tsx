@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { AttendeesTable } from '@/components/attendees/AttendeesTable';
 import { AttendanceTable } from '@/components/attendees/AttendanceTable';
 import { useAttendees, useCheckInAttendee, useCheckOutAttendee } from '@/hooks/useAttendees';
+import { useEvents } from '@/hooks/useEvents';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,9 +13,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Attendees() {
   const { data: attendees = [], isLoading } = useAttendees();
+  const { data: events = [] } = useEvents();
   const checkInMutation = useCheckInAttendee();
   const checkOutMutation = useCheckOutAttendee();
   const [search, setSearch] = useState('');
+  const [selectedEventId, setSelectedEventId] = useState<string>('all');
 
   const handleCheckIn = (attendeeId: string) => {
     const attendee = attendees.find(a => a.id === attendeeId);
@@ -50,16 +54,19 @@ export default function Attendees() {
   const totalTickets = attendees.reduce((sum, a) => sum + a.totalTickets, 0);
   const totalCheckedIn = attendees.reduce((sum, a) => sum + a.checkInCount, 0);
 
-  const filteredAttendees = attendees.filter(a => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      a.contact.name.toLowerCase().includes(q) ||
-      a.contact.email.toLowerCase().includes(q) ||
-      a.ticketNumber.toLowerCase().includes(q) ||
-      a.eventTitle.toLowerCase().includes(q)
-    );
-  });
+  const filteredAttendees = useMemo(() => {
+    return attendees.filter(a => {
+      if (selectedEventId !== 'all' && a.eventTitle !== events.find(e => e.id === selectedEventId)?.title) return false;
+      if (!search) return true;
+      const q = search.toLowerCase();
+      return (
+        a.contact.name.toLowerCase().includes(q) ||
+        a.contact.email.toLowerCase().includes(q) ||
+        a.ticketNumber.toLowerCase().includes(q) ||
+        a.eventTitle.toLowerCase().includes(q)
+      );
+    });
+  }, [attendees, search, selectedEventId, events]);
 
   if (isLoading) {
     return (
@@ -86,14 +93,27 @@ export default function Attendees() {
             <h1 className="text-3xl font-bold font-display">Attendees</h1>
             <p className="text-muted-foreground mt-1">Manage tickets and track attendance</p>
           </div>
-          <div className="relative w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search by name, email, ticket..." 
-              className="pl-9"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div className="flex items-center gap-3">
+            <Select value={selectedEventId} onValueChange={setSelectedEventId}>
+              <SelectTrigger className="w-48 bg-card">
+                <SelectValue placeholder="All Events" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover z-50">
+                <SelectItem value="all">All Events</SelectItem>
+                {events.map(event => (
+                  <SelectItem key={event.id} value={event.id}>{event.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="relative w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Search by name, email, ticket..." 
+                className="pl-9"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
           </div>
         </div>
 
@@ -139,7 +159,7 @@ export default function Attendees() {
           </TabsContent>
 
           <TabsContent value="attendance">
-            <AttendanceTable searchQuery={search} />
+            <AttendanceTable searchQuery={search} eventFilter={selectedEventId === 'all' ? 'all' : (events.find(e => e.id === selectedEventId)?.title || 'all')} />
           </TabsContent>
         </Tabs>
       </div>
