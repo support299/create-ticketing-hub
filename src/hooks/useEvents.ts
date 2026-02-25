@@ -139,34 +139,69 @@ export function useUpdateEvent() {
       if (error) throw error;
       return transformEvent(data);
     },
-    onSuccess: (updatedEvent, variables) => {
+    onSuccess: async (updatedEvent, variables) => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
       queryClient.invalidateQueries({ queryKey: ['events', variables.id] });
 
       // Sync name/description changes to LeadConnector
       if ((variables.title !== undefined || variables.description !== undefined) && updatedEvent.locationId) {
-        supabase
+        const { data } = await supabase
           .from('events')
           .select('ghl_product_id')
           .eq('id', variables.id)
-          .single()
-          .then(({ data }) => {
-            if (data?.ghl_product_id) {
-              supabase.functions.invoke('sync-product', {
-                body: {
-                  action: 'update',
-                  name: updatedEvent.title,
-                  locationId: updatedEvent.locationId,
-                  description: updatedEvent.description,
-                  eventId: variables.id,
-                  ghlProductId: data.ghl_product_id,
-                },
-              }).then(({ error }) => {
-                if (error) console.error('Failed to update product in LeadConnector:', error);
-                else console.log('Product updated in LeadConnector');
-              });
-            }
+          .single();
+
+        if (data?.ghl_product_id) {
+          supabase.functions.invoke('sync-product', {
+            body: {
+              action: 'update',
+              name: updatedEvent.title,
+              locationId: updatedEvent.locationId,
+              description: updatedEvent.description,
+              eventId: variables.id,
+              ghlProductId: data.ghl_product_id,
+            },
+          }).then(({ error }) => {
+            if (error) console.error('Failed to update product in LeadConnector:', error);
           });
+        }
+      }
+
+      // Sync inventory when capacity changes
+      if (variables.capacity !== undefined && updatedEvent.locationId) {
+        try {
+          const { data: bundles } = await supabase
+            .from('bundle_options')
+            .select('*')
+            .eq('event_id', variables.id);
+
+          if (bundles && bundles.length > 0) {
+            const remaining = updatedEvent.capacity - (updatedEvent.ticketsSold || 0);
+            const items = bundles
+              .filter((b: any) => b.ghl_price_id)
+              .map((b: any) => ({
+                priceId: b.ghl_price_id,
+                availableQuantity: Math.floor(remaining / b.bundle_quantity),
+                allowOutOfStockPurchases: false,
+              }));
+
+            if (items.length > 0) {
+              const { error } = await supabase.functions.invoke('sync-inventory', {
+                body: {
+                  locationId: updatedEvent.locationId,
+                  items,
+                },
+              });
+              if (error) console.error('Failed to sync inventory:', error);
+              else {
+                console.log('Inventory synced after capacity update');
+                toast.success('Inventory synced with LeadConnector');
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Inventory sync error:', err);
+        }
       }
     },
   });
