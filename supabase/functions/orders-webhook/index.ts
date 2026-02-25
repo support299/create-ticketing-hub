@@ -151,6 +151,7 @@ Deno.serve(async (req) => {
         total: resolvedTotal,
         status: status,
         location_id: resolvedLocationId,
+        bundle_option_id: bundleMatch ? bundleMatch.id : null,
       })
       .select()
       .single();
