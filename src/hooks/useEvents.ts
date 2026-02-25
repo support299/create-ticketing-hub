@@ -138,9 +138,35 @@ export function useUpdateEvent() {
       if (error) throw error;
       return transformEvent(data);
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (updatedEvent, variables) => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
       queryClient.invalidateQueries({ queryKey: ['events', variables.id] });
+
+      // Sync name/description changes to LeadConnector
+      if ((variables.title !== undefined || variables.description !== undefined) && updatedEvent.locationId) {
+        supabase
+          .from('events')
+          .select('ghl_product_id')
+          .eq('id', variables.id)
+          .single()
+          .then(({ data }) => {
+            if (data?.ghl_product_id) {
+              supabase.functions.invoke('sync-product', {
+                body: {
+                  action: 'update',
+                  name: updatedEvent.title,
+                  locationId: updatedEvent.locationId,
+                  description: updatedEvent.description,
+                  eventId: variables.id,
+                  ghlProductId: data.ghl_product_id,
+                },
+              }).then(({ error }) => {
+                if (error) console.error('Failed to update product in LeadConnector:', error);
+                else console.log('Product updated in LeadConnector');
+              });
+            }
+          });
+      }
     },
   });
 }
