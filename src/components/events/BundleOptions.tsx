@@ -5,12 +5,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useBundleOptions, useCreateBundleOption, useDeleteBundleOption } from '@/hooks/useBundleOptions';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface BundleOptionsProps {
   eventId: string;
+  ghlProductId?: string | null;
+  locationId?: string | null;
+  eventCapacity?: number;
 }
 
-export function BundleOptions({ eventId }: BundleOptionsProps) {
+export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity }: BundleOptionsProps) {
   const { data: bundles = [], isLoading } = useBundleOptions(eventId);
   const createBundle = useCreateBundleOption();
   const deleteBundle = useDeleteBundleOption();
@@ -25,16 +29,45 @@ export function BundleOptions({ eventId }: BundleOptionsProps) {
       toast.error('Package name is required');
       return;
     }
+    const bundlePrice = parseFloat(price) || 0;
+    const bundleQty = parseInt(quantity) || 1;
+
     createBundle.mutate(
       {
         eventId,
         packageName: name.trim(),
-        packagePrice: parseFloat(price) || 0,
-        bundleQuantity: parseInt(quantity) || 1,
+        packagePrice: bundlePrice,
+        bundleQuantity: bundleQty,
       },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
           toast.success('Bundle option added');
+
+          // Sync price to LeadConnector if product exists
+          if (ghlProductId && locationId) {
+            try {
+              const { data, error } = await supabase.functions.invoke('sync-bundle-price', {
+                body: {
+                  ghlProductId,
+                  bundleName: name.trim(),
+                  currency: 'USD',
+                  amount: bundlePrice,
+                  locationId,
+                  eventCapacity: eventCapacity || 0,
+                  bundleQuantity: bundleQty,
+                },
+              });
+              if (error) {
+                console.error('Failed to sync bundle price:', error);
+                toast.error('Bundle saved but failed to sync price to LeadConnector');
+              } else {
+                toast.success('Price synced to LeadConnector');
+              }
+            } catch (err) {
+              console.error('Error syncing bundle price:', err);
+            }
+          }
+
           setName('');
           setPrice('');
           setQuantity('');

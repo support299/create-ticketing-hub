@@ -19,6 +19,7 @@ const transformEvent = (row: any): Event => ({
   ticketPrice: Number(row.ticket_price) || 0,
   isActive: row.is_active,
   locationId: row.location_id || null,
+  ghlProductId: row.ghl_product_id || null,
 });
 
 export function useEvents() {

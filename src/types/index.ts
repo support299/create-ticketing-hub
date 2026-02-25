@@ -12,6 +12,7 @@ export interface Event {
   ticketPrice?: number;
   isActive: boolean;
   locationId?: string | null;
+  ghlProductId?: string | null;
 }
 
 export interface Contact {
