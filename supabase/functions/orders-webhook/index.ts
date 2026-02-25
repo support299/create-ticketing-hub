@@ -79,7 +79,6 @@ Deno.serve(async (req) => {
     const eventId = event.id;
 
     // 1b. If internalPriceId provided, look up the bundle to get quantity
-    let resolvedQuantity = quantity;
     let bundleMatch: any = null;
 
     if (internalPriceId) {
@@ -91,12 +90,11 @@ Deno.serve(async (req) => {
 
       if (bundle) {
         bundleMatch = bundle;
-        // Use bundle quantity if the payload quantity is default (1)
-        if (quantity === 1 && bundle.bundle_quantity > 1) {
-          resolvedQuantity = bundle.bundle_quantity;
-        }
       }
     }
+    // quantity = bundleQuantity * orderQuantity
+    const bundleQuantity = bundleMatch ? bundleMatch.bundle_quantity : 1;
+    const resolvedQuantity = bundleQuantity * quantity;
 
     const availableSeats = event.capacity - (event.tickets_sold || 0);
     if (resolvedQuantity > availableSeats) {

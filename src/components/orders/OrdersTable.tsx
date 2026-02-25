@@ -65,7 +65,7 @@ export function OrdersTable({ orders }: OrdersTableProps) {
             <TableHead className="font-display">Order ID</TableHead>
             <TableHead className="font-display">Customer</TableHead>
             <TableHead className="font-display">Event</TableHead>
-            <TableHead className="font-display">Quantity</TableHead>
+            <TableHead className="font-display">Seats</TableHead>
             <TableHead className="font-display">Total</TableHead>
             <TableHead className="font-display">Status</TableHead>
             <TableHead className="font-display">Date</TableHead>
