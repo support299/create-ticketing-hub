@@ -192,6 +192,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          bundle_option_id: string | null
           contact_id: string
           created_at: string
           event_id: string
@@ -202,6 +203,7 @@ export type Database = {
           total: number
         }
         Insert: {
+          bundle_option_id?: string | null
           contact_id: string
           created_at?: string
           event_id: string
@@ -212,6 +214,7 @@ export type Database = {
           total?: number
         }
         Update: {
+          bundle_option_id?: string | null
           contact_id?: string
           created_at?: string
           event_id?: string
@@ -222,6 +225,13 @@ export type Database = {
           total?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_bundle_option_id_fkey"
+            columns: ["bundle_option_id"]
+            isOneToOne: false
+            referencedRelation: "bundle_options"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_contact_id_fkey"
             columns: ["contact_id"]

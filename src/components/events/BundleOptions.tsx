@@ -7,6 +7,7 @@ import { useBundleOptions, useCreateBundleOption, useDeleteBundleOption, useUpda
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { BundleOption } from '@/types';
+import { useQuery } from '@tanstack/react-query';
 
 interface BundleOptionsProps {
   eventId: string;
@@ -21,6 +22,25 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
   const createBundle = useCreateBundleOption();
   const deleteBundle = useDeleteBundleOption();
   const updateBundle = useUpdateBundleOption();
+
+  // Query per-bundle sold seats
+  const { data: bundleSoldMap = {} } = useQuery({
+    queryKey: ['bundle-sold-seats', eventId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('bundle_option_id, quantity')
+        .eq('event_id', eventId)
+        .not('bundle_option_id', 'is', null);
+      if (error) throw error;
+      const map: Record<string, number> = {};
+      for (const row of data || []) {
+        const key = row.bundle_option_id as string;
+        map[key] = (map[key] || 0) + (row.quantity || 0);
+      }
+      return map;
+    },
+  });
 
   const [isAdding, setIsAdding] = useState(false);
   const [name, setName] = useState('');
@@ -265,11 +285,12 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
                         ${b.packagePrice.toFixed(2)} · {b.bundleQuantity} {b.bundleQuantity === 1 ? 'seat' : 'seats'}
                       </p>
                       {(() => {
+                        const soldForBundle = bundleSoldMap[b.id] || 0;
                         const remaining = (eventCapacity || 0) - (ticketsSold || 0);
                         const available = Math.floor(remaining / (b.bundleQuantity || 1));
                         return (
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            <span className="font-medium text-foreground">{ticketsSold || 0}</span> seats sold · <span className="font-medium text-foreground">{available}</span> bundles available
+                            <span className="font-medium text-foreground">{soldForBundle}</span> seats sold · <span className="font-medium text-foreground">{available}</span> bundles available
                           </p>
                         );
                       })()}
