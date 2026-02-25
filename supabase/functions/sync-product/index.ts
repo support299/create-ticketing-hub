@@ -21,7 +21,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { name, locationId, description, eventId } = await req.json();
+    const { name, locationId, description, eventId, ghlProductId, action } = await req.json();
 
     if (!name || !locationId || !eventId) {
       return new Response(JSON.stringify({ error: 'name, locationId, and eventId are required' }), {
@@ -30,8 +30,13 @@ serve(async (req) => {
       });
     }
 
-    const response = await fetch('https://services.leadconnectorhq.com/products/', {
-      method: 'POST',
+    const isUpdate = action === 'update' && ghlProductId;
+    const url = isUpdate
+      ? `https://services.leadconnectorhq.com/products/${ghlProductId}`
+      : 'https://services.leadconnectorhq.com/products/';
+
+    const response = await fetch(url, {
+      method: isUpdate ? 'PUT' : 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
