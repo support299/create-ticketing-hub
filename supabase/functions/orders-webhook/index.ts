@@ -206,6 +206,54 @@ Deno.serve(async (req) => {
       throw new Error('Failed to update event seat count');
     }
 
+    // 6. Sync inventory to LeadConnector for all bundles of this event
+    const updatedTicketsSold = (event.tickets_sold || 0) + resolvedQuantity;
+    const remainingSeats = event.capacity - updatedTicketsSold;
+
+    if (resolvedLocationId) {
+      try {
+        const LEADCONNECTOR_API_KEY = Deno.env.get('LEADCONNECTOR_API_KEY');
+        if (LEADCONNECTOR_API_KEY) {
+          const { data: allBundles } = await supabase
+            .from('bundle_options')
+            .select('*')
+            .eq('event_id', eventId);
+
+          if (allBundles && allBundles.length > 0) {
+            const items = allBundles
+              .filter((b: any) => b.ghl_price_id)
+              .map((b: any) => ({
+                priceId: b.ghl_price_id,
+                availableQuantity: Math.floor(remainingSeats / b.bundle_quantity),
+                allowOutOfStockPurchases: false,
+              }));
+
+            if (items.length > 0) {
+              const inventoryRes = await fetch('https://services.leadconnectorhq.com/products/inventory', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                  'Version': '2021-07-28',
+                  'Authorization': `Bearer ${LEADCONNECTOR_API_KEY}`,
+                },
+                body: JSON.stringify({
+                  altId: resolvedLocationId,
+                  altType: 'location',
+                  items,
+                }),
+              });
+
+              const inventoryData = await inventoryRes.text();
+              console.log('LeadConnector inventory sync response:', inventoryRes.status, inventoryData);
+            }
+          }
+        }
+      } catch (invErr) {
+        console.error('LeadConnector inventory sync failed (non-fatal):', invErr);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
