@@ -1,4 +1,4 @@
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Calendar, MapPin, Clock, Users, Edit, Trash2, Power } from 'lucide-react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,9 @@ import {
 export default function EventDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const locationId = searchParams.get('id');
+  const eventsPath = locationId ? `/events?id=${locationId}` : '/events';
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   
@@ -116,7 +119,7 @@ export default function EventDetail() {
       <MainLayout>
         <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
           <p className="text-muted-foreground">Event not found</p>
-          <Link to="/events">
+          <Link to={eventsPath}>
             <Button variant="outline">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Events
@@ -131,7 +134,7 @@ export default function EventDetail() {
     <MainLayout>
       <div className="space-y-8 animate-fade-in">
         {/* Back Button */}
-        <Link to="/events" className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors">
+        <Link to={eventsPath} className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Events
         </Link>
