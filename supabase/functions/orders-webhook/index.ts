@@ -25,8 +25,12 @@ Deno.serve(async (req) => {
 
     const raw = await req.json();
 
-    // Extract fields from the new payload structure
-    const eventId = raw["Event ID"];
+    // Accept new GHL-based identifiers
+    const internalProductId = raw.internalProductId || null;
+    const internalPriceId = raw.internalPriceId || null;
+    // Legacy fallback
+    const legacyEventId = raw["Event ID"] || null;
+
     const locationId = raw.location?.id || raw["Events Account ID"] || null;
     const firstName = raw.first_name || "";
     const lastName = raw.last_name || "";
@@ -34,37 +38,73 @@ Deno.serve(async (req) => {
     const email = raw.email;
     const phone = raw.phone || null;
     const quantity = raw.order?.quantity || 1;
-    const total = raw.order?.metadata?.amount ? raw.order.metadata.amount / 100 : (raw.order?.amount || 0); // use Stripe metadata amount (cents) if available
+    const total = raw.order?.metadata?.amount ? raw.order.metadata.amount / 100 : (raw.order?.amount || 0);
     const status = "completed";
 
-    if (!eventId || !email || !fullName) {
+    if (!email || !fullName) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: Event ID, email, full_name' }),
+        JSON.stringify({ error: 'Missing required fields: email, full_name' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // 1. Check if event exists and has capacity
-    const { data: event, error: eventError } = await supabase
-      .from('events')
-      .select('*')
-      .eq('id', eventId)
-      .single();
+    // 1. Resolve event: prefer internalProductId (ghl_product_id), then legacy Event ID
+    let event: any = null;
 
-    if (eventError || !event) {
+    if (internalProductId) {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .eq('ghl_product_id', internalProductId)
+        .single();
+      if (!error && data) event = data;
+    }
+
+    if (!event && legacyEventId) {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', legacyEventId)
+        .single();
+      if (!error && data) event = data;
+    }
+
+    if (!event) {
       return new Response(
-        JSON.stringify({ error: 'Event not found' }),
+        JSON.stringify({ error: 'Event not found. Provide internalProductId or Event ID.' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    const eventId = event.id;
+
+    // 1b. If internalPriceId provided, look up the bundle to get quantity
+    let resolvedQuantity = quantity;
+    let bundleMatch: any = null;
+
+    if (internalPriceId) {
+      const { data: bundle } = await supabase
+        .from('bundle_options')
+        .select('*')
+        .eq('ghl_price_id', internalPriceId)
+        .single();
+
+      if (bundle) {
+        bundleMatch = bundle;
+        // Use bundle quantity if the payload quantity is default (1)
+        if (quantity === 1 && bundle.bundle_quantity > 1) {
+          resolvedQuantity = bundle.bundle_quantity;
+        }
+      }
+    }
+
     const availableSeats = event.capacity - (event.tickets_sold || 0);
-    if (quantity > availableSeats) {
+    if (resolvedQuantity > availableSeats) {
       return new Response(
         JSON.stringify({ 
           error: 'Not enough seats available', 
           available: availableSeats,
-          requested: quantity 
+          requested: resolvedQuantity 
         }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -100,14 +140,17 @@ Deno.serve(async (req) => {
       contactId = newContact.id;
     }
 
+    // Resolve total: if bundle matched use bundle price when total is 0
+    const resolvedTotal = total > 0 ? total : (bundleMatch ? bundleMatch.package_price : 0);
+
     // 3. Create order
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
         event_id: eventId,
         contact_id: contactId,
-        quantity: quantity,
-        total: total,
+        quantity: resolvedQuantity,
+        total: resolvedTotal,
         status: status,
         location_id: resolvedLocationId,
       })
@@ -130,7 +173,7 @@ Deno.serve(async (req) => {
         ticket_number: ticketNumber,
         qr_code_url: qrCodeUrl,
         event_title: event.title,
-        total_tickets: quantity,
+        total_tickets: resolvedQuantity,
         check_in_count: 0,
         location_id: resolvedLocationId,
       })
@@ -142,7 +185,7 @@ Deno.serve(async (req) => {
     }
 
     // 4b. Create seat assignment rows for each ticket
-    const seatRows = Array.from({ length: quantity }, (_, i) => ({
+    const seatRows = Array.from({ length: resolvedQuantity }, (_, i) => ({
       attendee_id: attendeeResult.id,
       seat_number: i + 1,
     }));
@@ -153,13 +196,12 @@ Deno.serve(async (req) => {
 
     if (seatError) {
       console.error('Failed to create seat assignments:', seatError);
-      // Non-fatal: seats can be created later
     }
 
     // 5. Update event tickets_sold count
     const { error: updateError } = await supabase
       .from('events')
-      .update({ tickets_sold: (event.tickets_sold || 0) + quantity })
+      .update({ tickets_sold: (event.tickets_sold || 0) + resolvedQuantity })
       .eq('id', eventId);
 
     if (updateError) {
@@ -189,8 +231,9 @@ Deno.serve(async (req) => {
         },
         event: {
           title: event.title,
-          remaining_seats: availableSeats - quantity,
+          remaining_seats: availableSeats - resolvedQuantity,
         },
+        ...(bundleMatch ? { bundle: { name: bundleMatch.package_name, quantity: bundleMatch.bundle_quantity } } : {}),
       }),
       { status: 201, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
