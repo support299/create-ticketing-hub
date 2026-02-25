@@ -62,17 +62,17 @@ serve(async (req) => {
     console.log('Product created in LeadConnector:', data);
 
     // Save ghl_product_id to the event
-    const ghlProductId = data._id;
-    if (ghlProductId) {
+    const returnedProductId = isUpdate ? ghlProductId : data._id;
+    if (returnedProductId) {
       const { error: updateError } = await supabase
         .from('events')
-        .update({ ghl_product_id: ghlProductId })
+        .update({ ghl_product_id: returnedProductId })
         .eq('id', eventId);
 
       if (updateError) {
         console.error('Failed to save ghl_product_id:', updateError);
       } else {
-        console.log(`Saved ghl_product_id ${ghlProductId} to event ${eventId}`);
+        console.log(`Saved ghl_product_id ${returnedProductId} to event ${eventId}`);
       }
     }
 
