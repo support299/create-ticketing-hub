@@ -61,6 +61,7 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
                   locationId,
                   eventCapacity: eventCapacity || 0,
                   bundleQuantity: bundleQty,
+                  ticketsSold: ticketsSold || 0,
                 },
               });
               if (error) {
