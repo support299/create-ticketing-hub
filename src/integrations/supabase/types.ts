@@ -75,6 +75,7 @@ export type Database = {
         Row: {
           bundle_quantity: number
           created_at: string
+          currency: string
           event_id: string
           ghl_price_id: string | null
           id: string
@@ -84,6 +85,7 @@ export type Database = {
         Insert: {
           bundle_quantity?: number
           created_at?: string
+          currency?: string
           event_id: string
           ghl_price_id?: string | null
           id?: string
@@ -93,6 +95,7 @@ export type Database = {
         Update: {
           bundle_quantity?: number
           created_at?: string
+          currency?: string
           event_id?: string
           ghl_price_id?: string | null
           id?: string

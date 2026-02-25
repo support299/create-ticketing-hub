@@ -8,6 +8,7 @@ const mapRow = (row: any): BundleOption => ({
   packageName: row.package_name,
   packagePrice: Number(row.package_price),
   bundleQuantity: row.bundle_quantity,
+  currency: row.currency || 'USD',
   createdAt: row.created_at,
   ghlPriceId: row.ghl_price_id,
 });
@@ -31,7 +32,7 @@ export function useBundleOptions(eventId: string) {
 export function useCreateBundleOption() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (option: { eventId: string; packageName: string; packagePrice: number; bundleQuantity: number }) => {
+    mutationFn: async (option: { eventId: string; packageName: string; packagePrice: number; bundleQuantity: number; currency?: string }) => {
       const { data, error } = await supabase
         .from('bundle_options')
         .insert({
@@ -39,6 +40,7 @@ export function useCreateBundleOption() {
           package_name: option.packageName,
           package_price: option.packagePrice,
           bundle_quantity: option.bundleQuantity,
+          currency: option.currency || 'USD',
         })
         .select()
         .single();

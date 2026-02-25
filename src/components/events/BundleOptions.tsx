@@ -3,11 +3,24 @@ import { Plus, Trash2, Package, Pencil, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useBundleOptions, useCreateBundleOption, useDeleteBundleOption, useUpdateBundleOption } from '@/hooks/useBundleOptions';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { BundleOption } from '@/types';
 import { useQuery } from '@tanstack/react-query';
+
+const CURRENCIES = [
+  { value: 'USD', label: 'USD ($)', symbol: '$' },
+  { value: 'AUD', label: 'AUD (A$)', symbol: 'A$' },
+  { value: 'EUR', label: 'EUR (€)', symbol: '€' },
+  { value: 'GBP', label: 'GBP (£)', symbol: '£' },
+  { value: 'CAD', label: 'CAD (C$)', symbol: 'C$' },
+  { value: 'NZD', label: 'NZD (NZ$)', symbol: 'NZ$' },
+  { value: 'INR', label: 'INR (₹)', symbol: '₹' },
+];
+
+const getCurrencySymbol = (code: string) => CURRENCIES.find(c => c.value === code)?.symbol || '$';
 
 interface BundleOptionsProps {
   eventId: string;
@@ -46,6 +59,7 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [currency, setCurrency] = useState('USD');
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -65,6 +79,7 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
         packageName: name.trim(),
         packagePrice: bundlePrice,
         bundleQuantity: bundleQty,
+        currency,
       },
       {
         onSuccess: async (createdBundle) => {
@@ -76,7 +91,7 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
                 body: {
                   ghlProductId,
                   bundleName: name.trim(),
-                  currency: 'USD',
+                  currency,
                   amount: bundlePrice,
                   locationId,
                   eventCapacity: eventCapacity || 0,
@@ -106,6 +121,7 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
           setName('');
           setPrice('');
           setQuantity('');
+          setCurrency('USD');
           setIsAdding(false);
         },
         onError: () => toast.error('Failed to add bundle option'),
@@ -164,7 +180,7 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
                   ghlProductId,
                   ghlPriceId: b.ghlPriceId,
                   bundleName: newName,
-                  currency: 'USD',
+                  currency: b.currency || 'USD',
                   amount: newPrice,
                   locationId,
                   availableQuantity: availableQty,
@@ -203,13 +219,26 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
 
       {isAdding && (
         <div className="rounded-xl border border-border bg-card p-4 space-y-4">
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-4">
             <div className="space-y-1.5">
               <Label htmlFor="pkg-name">Package Name</Label>
               <Input id="pkg-name" placeholder="e.g. VIP Pass" value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="pkg-price">Price ($)</Label>
+              <Label htmlFor="pkg-currency">Currency</Label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger id="pkg-currency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map(c => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="pkg-price">Price ({getCurrencySymbol(currency)})</Label>
               <Input id="pkg-price" type="number" min="0" step="0.01" placeholder="0.00" value={price} onChange={(e) => setPrice(e.target.value)} />
             </div>
             <div className="space-y-1.5">
@@ -218,7 +247,7 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
             </div>
           </div>
           <div className="flex gap-2 justify-end">
-            <Button variant="outline" size="sm" onClick={() => { setIsAdding(false); setName(''); setPrice(''); setQuantity(''); }}>
+            <Button variant="outline" size="sm" onClick={() => { setIsAdding(false); setName(''); setPrice(''); setQuantity(''); setCurrency('USD'); }}>
               Cancel
             </Button>
             <Button size="sm" onClick={handleAdd} disabled={createBundle.isPending}>
@@ -282,7 +311,7 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
                      <div>
                       <p className="font-semibold">{b.packageName}</p>
                       <p className="text-sm text-muted-foreground">
-                        ${b.packagePrice.toFixed(2)} · {b.bundleQuantity} {b.bundleQuantity === 1 ? 'seat' : 'seats'}
+                        {getCurrencySymbol(b.currency)}{b.packagePrice.toFixed(2)} · {b.bundleQuantity} {b.bundleQuantity === 1 ? 'seat' : 'seats'}
                       </p>
                       {(() => {
                         const soldForBundle = bundleSoldMap[b.id] || 0;
