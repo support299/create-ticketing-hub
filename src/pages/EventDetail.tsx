@@ -8,6 +8,7 @@ import { useEvent, useUpdateEvent, useDeleteEvent } from '@/hooks/useEvents';
 import { useAttendeesByEvent, useCheckInAttendee } from '@/hooks/useAttendees';
 import { format } from 'date-fns';
 import { AttendeesTable } from '@/components/attendees/AttendeesTable';
+import { BundleOptions } from '@/components/events/BundleOptions';
 import { EditEventDialog } from '@/components/events/EditEventDialog';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
@@ -246,6 +247,9 @@ export default function EventDetail() {
             </div>
           </div>
         </div>
+
+        {/* Bundle Options */}
+        <BundleOptions eventId={event.id} />
 
         {/* Attendees */}
         {eventAttendees.length > 0 && (
