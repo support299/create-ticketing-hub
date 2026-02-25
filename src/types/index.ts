@@ -53,6 +53,7 @@ export interface BundleOption {
   packageName: string;
   packagePrice: number;
   bundleQuantity: number;
+  currency: string;
   createdAt: string;
   ghlPriceId?: string | null;
 }

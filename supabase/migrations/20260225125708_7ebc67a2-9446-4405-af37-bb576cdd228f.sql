@@ -1,0 +1,1 @@
+ALTER TABLE public.bundle_options ADD COLUMN currency text NOT NULL DEFAULT 'USD';
