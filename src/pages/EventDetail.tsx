@@ -89,7 +89,7 @@ export default function EventDetail() {
           toast.success('Event deleted', {
             description: `"${event.title}" has been permanently deleted.`,
           });
-          navigate('/events');
+          navigate(eventsPath);
         },
         onError: () => {
           toast.error('Failed to delete event');
