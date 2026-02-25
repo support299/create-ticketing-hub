@@ -54,6 +54,7 @@ export interface BundleOption {
   packagePrice: number;
   bundleQuantity: number;
   createdAt: string;
+  ghlPriceId?: string | null;
 }
 
 export interface SalesData {

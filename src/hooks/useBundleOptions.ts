@@ -9,6 +9,7 @@ const mapRow = (row: any): BundleOption => ({
   packagePrice: Number(row.package_price),
   bundleQuantity: row.bundle_quantity,
   createdAt: row.created_at,
+  ghlPriceId: row.ghl_price_id,
 });
 
 export function useBundleOptions(eventId: string) {

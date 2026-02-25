@@ -76,6 +76,7 @@ export type Database = {
           bundle_quantity: number
           created_at: string
           event_id: string
+          ghl_price_id: string | null
           id: string
           package_name: string
           package_price: number
@@ -84,6 +85,7 @@ export type Database = {
           bundle_quantity?: number
           created_at?: string
           event_id: string
+          ghl_price_id?: string | null
           id?: string
           package_name: string
           package_price?: number
@@ -92,6 +94,7 @@ export type Database = {
           bundle_quantity?: number
           created_at?: string
           event_id?: string
+          ghl_price_id?: string | null
           id?: string
           package_name?: string
           package_price?: number
