@@ -99,6 +99,7 @@ export function useCreateEvent() {
             name: createdEvent.title,
             locationId: createdEvent.locationId,
             description: createdEvent.description,
+            eventId: createdEvent.id,
           },
         }).then(({ error }) => {
           if (error) console.error('Failed to sync product to LeadConnector:', error);

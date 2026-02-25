@@ -1,0 +1,1 @@
+ALTER TABLE public.events ADD COLUMN ghl_product_id text DEFAULT NULL;

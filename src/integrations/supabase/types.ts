@@ -103,6 +103,7 @@ export type Database = {
           date: string
           description: string | null
           end_date: string
+          ghl_product_id: string | null
           id: string
           is_active: boolean
           location_id: string | null
@@ -120,6 +121,7 @@ export type Database = {
           date: string
           description?: string | null
           end_date: string
+          ghl_product_id?: string | null
           id?: string
           is_active?: boolean
           location_id?: string | null
@@ -137,6 +139,7 @@ export type Database = {
           date?: string
           description?: string | null
           end_date?: string
+          ghl_product_id?: string | null
           id?: string
           is_active?: boolean
           location_id?: string | null
