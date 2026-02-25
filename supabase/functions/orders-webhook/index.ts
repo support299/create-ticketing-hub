@@ -25,9 +25,9 @@ Deno.serve(async (req) => {
 
     const raw = await req.json();
 
-    // Accept new GHL-based identifiers
-    const internalProductId = raw.internalProductId || null;
-    const internalPriceId = raw.internalPriceId || null;
+    // Accept GHL-based identifiers from inside order object
+    const internalProductId = raw.order?.internalProductId || raw.internalProductId || null;
+    const internalPriceId = raw.order?.internalPriceId || raw.internalPriceId || null;
     // Legacy fallback
     const legacyEventId = raw["Event ID"] || null;
 
