@@ -57,6 +57,7 @@ interface AttendanceRecord {
 
 interface AttendanceTableProps {
   searchQuery?: string;
+  eventFilter?: string;
 }
 
 type ConfirmAction = {
@@ -159,7 +160,7 @@ const confirmMessages: Record<ConfirmAction['type'], { title: string; descriptio
   },
 };
 
-export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
+export function AttendanceTable({ searchQuery = '', eventFilter = 'all' }: AttendanceTableProps) {
   const { data: records = [], isLoading } = useAttendanceRecords();
   const checkInSeat = useCheckInSeat();
   const checkInAttendee = useCheckInAttendee();
@@ -171,17 +172,20 @@ export function AttendanceTable({ searchQuery = '' }: AttendanceTableProps) {
   const [guardianRecord, setGuardianRecord] = useState<AttendanceRecord | null>(null);
 
   const filteredRecords = useMemo(() => {
-    if (!searchQuery) return records;
-    const q = searchQuery.toLowerCase();
-    return records.filter(r =>
-      r.name.toLowerCase().includes(q) ||
-      r.email.toLowerCase().includes(q) ||
-      r.phone.toLowerCase().includes(q) ||
-      r.eventTitle.toLowerCase().includes(q) ||
-      r.mainPurchaser.toLowerCase().includes(q) ||
-      r.ticketNumber.toLowerCase().includes(q)
-    );
-  }, [records, searchQuery]);
+    return records.filter(r => {
+      if (eventFilter !== 'all' && r.eventTitle !== eventFilter) return false;
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        r.name.toLowerCase().includes(q) ||
+        r.email.toLowerCase().includes(q) ||
+        r.phone.toLowerCase().includes(q) ||
+        r.eventTitle.toLowerCase().includes(q) ||
+        r.mainPurchaser.toLowerCase().includes(q) ||
+        r.ticketNumber.toLowerCase().includes(q)
+      );
+    });
+  }, [records, searchQuery, eventFilter]);
 
   const handleConfirm = () => {
     if (!confirmAction) return;
