@@ -249,7 +249,7 @@ export default function EventDetail() {
         </div>
 
         {/* Bundle Options */}
-        <BundleOptions eventId={event.id} ghlProductId={event.ghlProductId} locationId={event.locationId} eventCapacity={event.capacity} />
+        <BundleOptions eventId={event.id} ghlProductId={event.ghlProductId} locationId={event.locationId} eventCapacity={event.capacity} ticketsSold={event.ticketsSold} />
 
         {/* Attendees */}
         {eventAttendees.length > 0 && (
