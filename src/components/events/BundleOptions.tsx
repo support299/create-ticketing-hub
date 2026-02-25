@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Plus, Trash2, Package } from 'lucide-react';
+import { Plus, Trash2, Package, Pencil, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useBundleOptions, useCreateBundleOption, useDeleteBundleOption } from '@/hooks/useBundleOptions';
+import { useBundleOptions, useCreateBundleOption, useDeleteBundleOption, useUpdateBundleOption } from '@/hooks/useBundleOptions';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { BundleOption } from '@/types';
 
 interface BundleOptionsProps {
   eventId: string;
@@ -18,11 +19,16 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
   const { data: bundles = [], isLoading } = useBundleOptions(eventId);
   const createBundle = useCreateBundleOption();
   const deleteBundle = useDeleteBundleOption();
+  const updateBundle = useUpdateBundleOption();
 
   const [isAdding, setIsAdding] = useState(false);
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [quantity, setQuantity] = useState('');
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editPrice, setEditPrice] = useState('');
 
   const handleAdd = () => {
     if (!name.trim()) {
@@ -43,10 +49,9 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
         onSuccess: async () => {
           toast.success('Bundle option added');
 
-          // Sync price to LeadConnector if product exists
           if (ghlProductId && locationId) {
             try {
-              const { data, error } = await supabase.functions.invoke('sync-bundle-price', {
+              const { error } = await supabase.functions.invoke('sync-bundle-price', {
                 body: {
                   ghlProductId,
                   bundleName: name.trim(),
@@ -84,6 +89,40 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
       {
         onSuccess: () => toast.success('Bundle option removed'),
         onError: () => toast.error('Failed to remove bundle option'),
+      }
+    );
+  };
+
+  const startEdit = (b: BundleOption) => {
+    setEditingId(b.id);
+    setEditName(b.packageName);
+    setEditPrice(b.packagePrice.toString());
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditName('');
+    setEditPrice('');
+  };
+
+  const handleSaveEdit = (b: BundleOption) => {
+    if (!editName.trim()) {
+      toast.error('Package name is required');
+      return;
+    }
+    updateBundle.mutate(
+      {
+        id: b.id,
+        eventId,
+        packageName: editName.trim(),
+        packagePrice: parseFloat(editPrice) || 0,
+      },
+      {
+        onSuccess: () => {
+          toast.success('Bundle option updated');
+          cancelEdit();
+        },
+        onError: () => toast.error('Failed to update bundle option'),
       }
     );
   };
@@ -141,20 +180,63 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
         <div className="space-y-2">
           {bundles.map((b) => (
             <div key={b.id} className="flex items-center justify-between rounded-xl border border-border bg-card p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                  <Package className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold">{b.packageName}</p>
-                  <p className="text-sm text-muted-foreground">
-                    ${b.packagePrice.toFixed(2)} · {b.bundleQuantity} {b.bundleQuantity === 1 ? 'ticket' : 'tickets'}
+              {editingId === b.id ? (
+                <div className="flex-1 flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                    <Package className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2 flex-1">
+                    <Input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Package name"
+                      className="h-8"
+                    />
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editPrice}
+                      onChange={(e) => setEditPrice(e.target.value)}
+                      placeholder="Price"
+                      className="h-8"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground shrink-0 px-2">
+                    Qty: {b.bundleQuantity} <span className="text-muted-foreground/60">(locked)</span>
                   </p>
+                  <div className="flex gap-1 shrink-0">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleSaveEdit(b)} disabled={updateBundle.isPending}>
+                      <Check className="h-4 w-4 text-green-600" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={cancelEdit}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-              </div>
-              <Button variant="ghost" size="icon" onClick={() => handleDelete(b.id)} disabled={deleteBundle.isPending}>
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <Package className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">{b.packageName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        ${b.packagePrice.toFixed(2)} · {b.bundleQuantity} {b.bundleQuantity === 1 ? 'ticket' : 'tickets'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={() => startEdit(b)}>
+                      <Pencil className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(b.id)} disabled={deleteBundle.isPending}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>
