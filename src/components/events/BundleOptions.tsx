@@ -13,9 +13,10 @@ interface BundleOptionsProps {
   ghlProductId?: string | null;
   locationId?: string | null;
   eventCapacity?: number;
+  ticketsSold?: number;
 }
 
-export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity }: BundleOptionsProps) {
+export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity, ticketsSold }: BundleOptionsProps) {
   const { data: bundles = [], isLoading } = useBundleOptions(eventId);
   const createBundle = useCreateBundleOption();
   const deleteBundle = useDeleteBundleOption();
@@ -135,6 +136,8 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
 
           if (ghlProductId && locationId && b.ghlPriceId) {
             try {
+              const remainingSeats = (eventCapacity || 0) - (ticketsSold || 0);
+              const availableQty = Math.floor(remainingSeats / (b.bundleQuantity || 1));
               const { error } = await supabase.functions.invoke('update-bundle-price', {
                 body: {
                   ghlProductId,
@@ -143,6 +146,7 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
                   currency: 'USD',
                   amount: newPrice,
                   locationId,
+                  availableQuantity: availableQty,
                 },
               });
               if (error) {

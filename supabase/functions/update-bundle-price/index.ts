@@ -16,7 +16,7 @@ serve(async (req) => {
       throw new Error('LEADCONNECTOR_API_KEY is not configured');
     }
 
-    const { ghlProductId, ghlPriceId, bundleName, currency, amount, locationId } = await req.json();
+    const { ghlProductId, ghlPriceId, bundleName, currency, amount, locationId, availableQuantity } = await req.json();
 
     if (!ghlProductId || !ghlPriceId || !bundleName || !locationId) {
       return new Response(JSON.stringify({ error: 'ghlProductId, ghlPriceId, bundleName, and locationId are required' }), {
@@ -39,6 +39,9 @@ serve(async (req) => {
         currency: currency || 'USD',
         amount: amount || 0,
         locationId,
+        trackInventory: true,
+        availableQuantity: availableQuantity ?? 0,
+        allowOutOfStockPurchases: false,
       }),
     });
 
