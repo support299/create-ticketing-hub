@@ -89,8 +89,22 @@ export function useCreateEvent() {
       if (error) throw error;
       return transformEvent(data);
     },
-    onSuccess: () => {
+    onSuccess: (createdEvent) => {
       queryClient.invalidateQueries({ queryKey: ['events'] });
+
+      // Sync product to LeadConnector in the background
+      if (createdEvent.locationId) {
+        supabase.functions.invoke('sync-product', {
+          body: {
+            name: createdEvent.title,
+            locationId: createdEvent.locationId,
+            description: createdEvent.description,
+          },
+        }).then(({ error }) => {
+          if (error) console.error('Failed to sync product to LeadConnector:', error);
+          else console.log('Product synced to LeadConnector');
+        });
+      }
     },
   });
 }
