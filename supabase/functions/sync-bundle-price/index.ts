@@ -16,7 +16,7 @@ serve(async (req) => {
       throw new Error('LEADCONNECTOR_API_KEY is not configured');
     }
 
-    const { ghlProductId, bundleName, currency, amount, locationId, eventCapacity, bundleQuantity } = await req.json();
+    const { ghlProductId, bundleName, currency, amount, locationId, eventCapacity, bundleQuantity, ticketsSold } = await req.json();
 
     if (!ghlProductId || !bundleName || !locationId || !bundleQuantity) {
       return new Response(JSON.stringify({ error: 'ghlProductId, bundleName, locationId, and bundleQuantity are required' }), {
@@ -25,7 +25,8 @@ serve(async (req) => {
       });
     }
 
-    const availableQuantity = Math.floor((eventCapacity || 0) / bundleQuantity);
+    const remainingSeats = (eventCapacity || 0) - (ticketsSold || 0);
+    const availableQuantity = Math.floor(remainingSeats / bundleQuantity);
 
     const response = await fetch(`https://services.leadconnectorhq.com/products/${ghlProductId}/price`, {
       method: 'POST',
