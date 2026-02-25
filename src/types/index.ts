@@ -46,6 +46,15 @@ export interface Attendee {
   locationId?: string | null;
 }
 
+export interface BundleOption {
+  id: string;
+  eventId: string;
+  packageName: string;
+  packagePrice: number;
+  bundleQuantity: number;
+  createdAt: string;
+}
+
 export interface SalesData {
   date: string;
   revenue: number;

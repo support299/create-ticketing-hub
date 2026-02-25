@@ -71,6 +71,41 @@ export type Database = {
           },
         ]
       }
+      bundle_options: {
+        Row: {
+          bundle_quantity: number
+          created_at: string
+          event_id: string
+          id: string
+          package_name: string
+          package_price: number
+        }
+        Insert: {
+          bundle_quantity?: number
+          created_at?: string
+          event_id: string
+          id?: string
+          package_name: string
+          package_price?: number
+        }
+        Update: {
+          bundle_quantity?: number
+          created_at?: string
+          event_id?: string
+          id?: string
+          package_name?: string
+          package_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bundle_options_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           created_at: string
