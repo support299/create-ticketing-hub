@@ -118,17 +118,43 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
       toast.error('Package name is required');
       return;
     }
+    const newName = editName.trim();
+    const newPrice = parseFloat(editPrice) || 0;
+
     updateBundle.mutate(
       {
         id: b.id,
         eventId,
-        packageName: editName.trim(),
-        packagePrice: parseFloat(editPrice) || 0,
+        packageName: newName,
+        packagePrice: newPrice,
       },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
           toast.success('Bundle option updated');
           cancelEdit();
+
+          if (ghlProductId && locationId && b.ghlPriceId) {
+            try {
+              const { error } = await supabase.functions.invoke('update-bundle-price', {
+                body: {
+                  ghlProductId,
+                  ghlPriceId: b.ghlPriceId,
+                  bundleName: newName,
+                  currency: 'USD',
+                  amount: newPrice,
+                  locationId,
+                },
+              });
+              if (error) {
+                console.error('Failed to sync bundle price update:', error);
+                toast.error('Bundle updated but failed to sync to LeadConnector');
+              } else {
+                toast.success('Price updated in LeadConnector');
+              }
+            } catch (err) {
+              console.error('Error syncing bundle price update:', err);
+            }
+          }
         },
         onError: () => toast.error('Failed to update bundle option'),
       }
