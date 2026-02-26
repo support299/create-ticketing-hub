@@ -193,6 +193,30 @@ export type Database = {
         }
         Relationships: []
       }
+      location_api_keys: {
+        Row: {
+          api_key: string
+          created_at: string
+          id: string
+          location_id: string
+          updated_at: string
+        }
+        Insert: {
+          api_key: string
+          created_at?: string
+          id?: string
+          location_id: string
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string
+          created_at?: string
+          id?: string
+          location_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           bundle_option_id: string | null

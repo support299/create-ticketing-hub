@@ -11,6 +11,7 @@ import Orders from "./pages/Orders";
 import Attendees from "./pages/Attendees";
 import CheckIn from "./pages/CheckIn";
 import OrderSeats from "./pages/OrderSeats";
+import LocationSettings from "./pages/LocationSettings";
 import NotFound from "./pages/NotFound";
 import { LocationGuard } from "./components/layout/LocationGuard";
 
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/attendees" element={<LocationGuard><Attendees /></LocationGuard>} />
             <Route path="/check-in" element={<CheckIn />} />
             <Route path="/orders/:ticketNumber" element={<OrderSeats />} />
+            <Route path="/settings/locations" element={<LocationSettings />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
