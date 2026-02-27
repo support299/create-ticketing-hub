@@ -344,25 +344,29 @@ serve(async (req) => {
       console.error('Inventory sync failed (non-fatal):', invErr);
     }
 
-    // Fetch/store "Ticket ID" custom field, then update GHL contact
+    // Fetch/store custom fields, then update GHL contact with ticket ID + quantity
     try {
       const cfApiKey = await getLocationApiKey(supabase, locationId);
       if (cfApiKey) {
-        // Step 1: Resolve the Ticket ID custom field for this location
-        let ticketFieldId: string | null = null;
+        const fieldsToResolve = ['Ticket ID', 'Ticket Quantity'];
+        const resolvedFields: Record<string, string> = {};
 
-        // Check if we already have it cached
-        const { data: cachedField } = await supabase
+        // Check cached fields
+        const { data: cachedFields } = await supabase
           .from('location_custom_fields')
-          .select('field_id')
+          .select('field_id, field_name')
           .eq('location_id', locationId)
-          .eq('field_name', 'Ticket ID')
-          .maybeSingle();
+          .in('field_name', fieldsToResolve);
 
-        if (cachedField) {
-          ticketFieldId = cachedField.field_id;
-        } else {
-          // Fetch from GHL API
+        if (cachedFields) {
+          for (const cf of cachedFields) {
+            resolvedFields[cf.field_name] = cf.field_id;
+          }
+        }
+
+        // If any fields are missing, fetch from GHL API
+        const missingFields = fieldsToResolve.filter(f => !resolvedFields[f]);
+        if (missingFields.length > 0) {
           const cfRes = await fetch(
             `https://services.leadconnectorhq.com/locations/${locationId}/customFields`,
             {
@@ -375,28 +379,45 @@ serve(async (req) => {
           );
           if (cfRes.ok) {
             const cfData = await cfRes.json();
-            const ticketField = (cfData?.customFields || []).find(
-              (f: any) => f.name === 'Ticket ID' && f.model === 'contact'
-            );
-            if (ticketField) {
-              ticketFieldId = ticketField.id;
-              await supabase
-                .from('location_custom_fields')
-                .upsert(
-                  { location_id: locationId, field_id: ticketField.id, field_name: ticketField.name },
-                  { onConflict: 'location_id,field_name' }
-                );
-              console.log(`Stored Ticket ID custom field: ${ticketField.id} for location ${locationId}`);
-            } else {
-              console.warn('No "Ticket ID" custom field found for location', locationId);
+            const allFields = cfData?.customFields || [];
+            for (const fieldName of missingFields) {
+              const found = allFields.find((f: any) => f.name === fieldName && f.model === 'contact');
+              if (found) {
+                resolvedFields[fieldName] = found.id;
+                await supabase
+                  .from('location_custom_fields')
+                  .upsert(
+                    { location_id: locationId, field_id: found.id, field_name: found.name },
+                    { onConflict: 'location_id,field_name' }
+                  );
+                console.log(`Stored custom field "${fieldName}": ${found.id} for location ${locationId}`);
+              } else {
+                console.warn(`No "${fieldName}" custom field found for location`, locationId);
+              }
             }
           } else {
             console.error('Custom fields API failed:', cfRes.status);
           }
         }
 
-        // Step 2: Update the GHL contact with the ticket number
-        if (ticketFieldId && ghlContactId) {
+        // Update the GHL contact with ticket ID and quantity
+        if (ghlContactId && (resolvedFields['Ticket ID'] || resolvedFields['Ticket Quantity'])) {
+          const customFieldsPayload: any[] = [];
+          if (resolvedFields['Ticket ID']) {
+            customFieldsPayload.push({
+              id: resolvedFields['Ticket ID'],
+              key: 'ticket_id',
+              field_value: ticketNumber,
+            });
+          }
+          if (resolvedFields['Ticket Quantity']) {
+            customFieldsPayload.push({
+              id: resolvedFields['Ticket Quantity'],
+              key: 'ticket_qty',
+              field_value: String(totalSeats),
+            });
+          }
+
           const updateRes = await fetch(
             `https://services.leadconnectorhq.com/contacts/${ghlContactId}`,
             {
@@ -407,25 +428,17 @@ serve(async (req) => {
                 'Version': '2021-07-28',
                 'Authorization': `Bearer ${cfApiKey}`,
               },
-              body: JSON.stringify({
-                customFields: [
-                  {
-                    id: ticketFieldId,
-                    key: 'ticket_id',
-                    field_value: ticketNumber,
-                  },
-                ],
-              }),
+              body: JSON.stringify({ customFields: customFieldsPayload }),
             }
           );
           const updateBody = await updateRes.text();
           if (updateRes.ok) {
-            console.log(`Updated GHL contact ${ghlContactId} with ticket_id=${ticketNumber}`);
+            console.log(`Updated GHL contact ${ghlContactId} with ticket_id=${ticketNumber}, ticket_qty=${totalSeats}`);
           } else {
             console.error(`Failed to update GHL contact ${ghlContactId}:`, updateRes.status, updateBody);
           }
         } else {
-          console.warn('Skipping GHL contact update: ticketFieldId=', ticketFieldId, 'ghlContactId=', ghlContactId);
+          console.warn('Skipping GHL contact update: resolvedFields=', resolvedFields, 'ghlContactId=', ghlContactId);
         }
       }
     } catch (cfErr) {
