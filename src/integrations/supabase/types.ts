@@ -217,6 +217,51 @@ export type Database = {
         }
         Relationships: []
       }
+      order_line_items: {
+        Row: {
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          currency: string
+          id: string
+          location_id: string
+          order_id: string
+          price_id: string
+          price_name: string | null
+          quantity: number
+          unit_price: number
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          location_id: string
+          order_id: string
+          price_id: string
+          price_name?: string | null
+          quantity?: number
+          unit_price?: number
+        }
+        Update: {
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          location_id?: string
+          order_id?: string
+          price_id?: string
+          price_name?: string | null
+          quantity?: number
+          unit_price?: number
+        }
+        Relationships: []
+      }
       order_responses: {
         Row: {
           created_at: string
