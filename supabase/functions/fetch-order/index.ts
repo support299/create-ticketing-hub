@@ -125,30 +125,7 @@ serve(async (req) => {
       console.log(`Saved ${lineItems.length} line items for order ${orderId}`);
     }
 
-    // ── PROCESS LINE ITEMS INTO ORDERS ──
-    // Group line items by product_id + price_id combo
-    const grouped: Record<string, { productId: string; priceId: string; totalQty: number; unitPrice: number; currency: string }> = {};
-
-    for (const li of lineItems) {
-      if (!li.product_id || !li.price_id) {
-        console.warn('Skipping line item without product_id or price_id');
-        continue;
-      }
-      const key = `${li.product_id}::${li.price_id}`;
-      if (!grouped[key]) {
-        grouped[key] = {
-          productId: li.product_id,
-          priceId: li.price_id,
-          totalQty: 0,
-          unitPrice: li.unit_price,
-          currency: li.currency,
-        };
-      }
-      grouped[key].totalQty += li.quantity;
-    }
-
-    const createdOrders: any[] = [];
-
+    // ── PROCESS LINE ITEMS INTO A SINGLE ORDER ──
     // Resolve or create contact
     let internalContactId: string | null = null;
     if (contactEmail) {
@@ -186,170 +163,200 @@ serve(async (req) => {
       });
     }
 
-    for (const [_key, group] of Object.entries(grouped)) {
-      // Find event by product_id (ghl_product_id)
-      const { data: event, error: eventErr } = await supabase
-        .from('events')
-        .select('*')
-        .eq('ghl_product_id', group.productId)
-        .single();
+    // Calculate order total from line items: sum of (quantity × unit_price)
+    let orderTotal = 0;
+    let totalSeats = 0;
+    let eventId: string | null = null;
+    let eventTitle = '';
+    let eventRecord: any = null;
+    let firstBundleId: string | null = null;
 
-      if (eventErr || !event) {
-        console.warn(`No event found for product_id ${group.productId}, skipping`);
+    for (const li of lineItems) {
+      if (!li.product_id || !li.price_id) {
+        console.warn('Skipping line item without product_id or price_id');
         continue;
       }
 
-      // Find bundle by price_id (ghl_price_id)
+      // Add line item total (quantity × unit_price, already in dollars)
+      orderTotal += li.quantity * li.unit_price;
+
+      // Find event by product_id
+      if (!eventRecord) {
+        const { data: event, error: eventErr } = await supabase
+          .from('events')
+          .select('*')
+          .eq('ghl_product_id', li.product_id)
+          .single();
+
+        if (eventErr || !event) {
+          console.warn(`No event found for product_id ${li.product_id}, skipping`);
+          continue;
+        }
+        eventRecord = event;
+        eventId = event.id;
+        eventTitle = event.title;
+      }
+
+      // Find bundle by price_id to get seat multiplier
       const { data: bundle } = await supabase
         .from('bundle_options')
         .select('*')
-        .eq('ghl_price_id', group.priceId)
+        .eq('ghl_price_id', li.price_id)
         .single();
 
       const bundleQuantity = bundle ? bundle.bundle_quantity : 1;
-      const resolvedQuantity = bundleQuantity * group.totalQty;
+      totalSeats += bundleQuantity * li.quantity;
 
-      // Check capacity
-      const availableSeats = event.capacity - (event.tickets_sold || 0);
-      if (resolvedQuantity > availableSeats) {
-        console.warn(`Not enough seats for event ${event.title}: need ${resolvedQuantity}, have ${availableSeats}`);
-        continue;
+      if (!firstBundleId && bundle) {
+        firstBundleId = bundle.id;
       }
+    }
 
-      const resolvedTotal = group.unitPrice > 0
-        ? (group.unitPrice * group.totalQty) / 100 // cents to dollars
-        : (bundle ? bundle.package_price * group.totalQty : 0);
+    if (!eventId || !eventRecord) {
+      console.warn('No matching event found for any line items');
+      return new Response(JSON.stringify({ success: true, lineItemsStored: lineItems.length, warning: 'No matching event' }), {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-      // Create order
-      const { data: order, error: orderError } = await supabase
-        .from('orders')
-        .insert({
-          event_id: event.id,
-          contact_id: internalContactId,
-          quantity: resolvedQuantity,
-          total: resolvedTotal,
-          status: 'completed',
-          location_id: locationId,
-          bundle_option_id: bundle ? bundle.id : null,
-        })
-        .select()
-        .single();
+    // Check capacity
+    const availableSeats = eventRecord.capacity - (eventRecord.tickets_sold || 0);
+    if (totalSeats > availableSeats) {
+      console.warn(`Not enough seats for event ${eventTitle}: need ${totalSeats}, have ${availableSeats}`);
+      return new Response(JSON.stringify({ success: false, error: `Not enough seats: need ${totalSeats}, have ${availableSeats}` }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-      if (orderError || !order) {
-        console.error('Failed to create order:', orderError);
-        continue;
-      }
+    // Create single order
+    const { data: order, error: orderError } = await supabase
+      .from('orders')
+      .insert({
+        event_id: eventId,
+        contact_id: internalContactId,
+        quantity: totalSeats,
+        total: orderTotal,
+        status: 'completed',
+        location_id: locationId,
+        bundle_option_id: firstBundleId,
+      })
+      .select()
+      .single();
 
-      // Create single attendee with 1 QR for all seats
-      const ticketNumber = `TKT-${order.id.slice(0, 8).toUpperCase()}`;
-      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${ticketNumber}`;
+    if (orderError || !order) {
+      console.error('Failed to create order:', orderError);
+      throw new Error('Failed to create order');
+    }
 
-      const { data: attendee, error: attendeeError } = await supabase
-        .from('attendees')
-        .insert({
-          order_id: order.id,
-          contact_id: internalContactId,
-          ticket_number: ticketNumber,
-          qr_code_url: qrCodeUrl,
-          event_title: event.title,
-          total_tickets: resolvedQuantity,
-          check_in_count: 0,
-          location_id: locationId,
-        })
-        .select()
-        .single();
+    // Create single attendee with 1 QR code
+    const ticketNumber = `TKT-${order.id.slice(0, 8).toUpperCase()}`;
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${ticketNumber}`;
 
-      if (attendeeError || !attendee) {
-        console.error('Failed to create attendee:', attendeeError);
-        continue;
-      }
+    const { data: attendee, error: attendeeError } = await supabase
+      .from('attendees')
+      .insert({
+        order_id: order.id,
+        contact_id: internalContactId,
+        ticket_number: ticketNumber,
+        qr_code_url: qrCodeUrl,
+        event_title: eventTitle,
+        total_tickets: totalSeats,
+        check_in_count: 0,
+        location_id: locationId,
+      })
+      .select()
+      .single();
 
-      // Create seat assignments
-      const seatRows = Array.from({ length: resolvedQuantity }, (_, i) => ({
-        attendee_id: attendee.id,
-        seat_number: i + 1,
-      }));
+    if (attendeeError || !attendee) {
+      console.error('Failed to create attendee:', attendeeError);
+      throw new Error('Failed to create attendee');
+    }
 
-      const { error: seatError } = await supabase
-        .from('seat_assignments')
-        .insert(seatRows);
+    // Create seat assignments
+    const seatRows = Array.from({ length: totalSeats }, (_, i) => ({
+      attendee_id: attendee.id,
+      seat_number: i + 1,
+    }));
 
-      if (seatError) {
-        console.error('Failed to create seat assignments:', seatError);
-      }
+    const { error: seatError } = await supabase
+      .from('seat_assignments')
+      .insert(seatRows);
 
-      // Update event tickets_sold
-      const { error: updateError } = await supabase
-        .from('events')
-        .update({ tickets_sold: (event.tickets_sold || 0) + resolvedQuantity })
-        .eq('id', event.id);
+    if (seatError) {
+      console.error('Failed to create seat assignments:', seatError);
+    }
 
-      if (updateError) {
-        console.error('Failed to update event tickets_sold:', updateError);
-      }
+    // Update event tickets_sold
+    const { error: updateError } = await supabase
+      .from('events')
+      .update({ tickets_sold: (eventRecord.tickets_sold || 0) + totalSeats })
+      .eq('id', eventId);
 
-      // Sync inventory to LeadConnector
-      const updatedTicketsSold = (event.tickets_sold || 0) + resolvedQuantity;
-      const remainingSeats = event.capacity - updatedTicketsSold;
+    if (updateError) {
+      console.error('Failed to update event tickets_sold:', updateError);
+    }
 
-      try {
-        const apiKey = await getLocationApiKey(supabase, locationId);
-        if (apiKey) {
-          const { data: allBundles } = await supabase
-            .from('bundle_options')
-            .select('*')
-            .eq('event_id', event.id);
+    // Sync inventory to LeadConnector
+    const updatedTicketsSold = (eventRecord.tickets_sold || 0) + totalSeats;
+    const remainingSeats = eventRecord.capacity - updatedTicketsSold;
 
-          if (allBundles && allBundles.length > 0) {
-            const invItems = allBundles
-              .filter((b: any) => b.ghl_price_id)
-              .map((b: any) => ({
-                priceId: b.ghl_price_id,
-                availableQuantity: Math.floor(remainingSeats / b.bundle_quantity),
-                allowOutOfStockPurchases: false,
-              }));
+    try {
+      const apiKey = await getLocationApiKey(supabase, locationId);
+      if (apiKey) {
+        const { data: allBundles } = await supabase
+          .from('bundle_options')
+          .select('*')
+          .eq('event_id', eventId);
 
-            if (invItems.length > 0) {
-              const inventoryRes = await fetch('https://services.leadconnectorhq.com/products/inventory', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Accept': 'application/json',
-                  'Version': '2021-07-28',
-                  'Authorization': `Bearer ${apiKey}`,
-                },
-                body: JSON.stringify({
-                  altId: locationId,
-                  altType: 'location',
-                  items: invItems,
-                }),
-              });
+        if (allBundles && allBundles.length > 0) {
+          const invItems = allBundles
+            .filter((b: any) => b.ghl_price_id)
+            .map((b: any) => ({
+              priceId: b.ghl_price_id,
+              availableQuantity: Math.floor(remainingSeats / b.bundle_quantity),
+              allowOutOfStockPurchases: false,
+            }));
 
-              const inventoryData = await inventoryRes.text();
-              console.log('Inventory sync response:', inventoryRes.status, inventoryData);
-            }
+          if (invItems.length > 0) {
+            const inventoryRes = await fetch('https://services.leadconnectorhq.com/products/inventory', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Version': '2021-07-28',
+                'Authorization': `Bearer ${apiKey}`,
+              },
+              body: JSON.stringify({
+                altId: locationId,
+                altType: 'location',
+                items: invItems,
+              }),
+            });
+
+            const inventoryData = await inventoryRes.text();
+            console.log('Inventory sync response:', inventoryRes.status, inventoryData);
           }
         }
-      } catch (invErr) {
-        console.error('Inventory sync failed (non-fatal):', invErr);
       }
-
-      createdOrders.push({
-        orderId: order.id,
-        eventTitle: event.title,
-        seats: resolvedQuantity,
-        ticketNumber,
-        qrCodeUrl,
-        bundle: bundle ? bundle.package_name : null,
-      });
-
-      console.log(`Created order ${order.id} with ${resolvedQuantity} seats for event ${event.title}`);
+    } catch (invErr) {
+      console.error('Inventory sync failed (non-fatal):', invErr);
     }
+
+    console.log(`Created order ${order.id} with ${totalSeats} seats, total $${orderTotal} for event ${eventTitle}`);
 
     return new Response(JSON.stringify({
       success: true,
       lineItemsStored: lineItems.length,
-      ordersCreated: createdOrders,
+      order: {
+        orderId: order.id,
+        eventTitle,
+        seats: totalSeats,
+        total: orderTotal,
+        ticketNumber,
+        qrCodeUrl,
+      },
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
