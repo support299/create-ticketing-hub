@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Check, Ticket, User, Mail, Phone, Loader2, ArrowLeft } from 'lucide-react';
+import { isValidPhone, isValidEmail } from '@/lib/validation';
 
 interface SeatForm {
   name: string;
@@ -110,6 +111,14 @@ export default function OrderSeats() {
     }
     if (!form.isMinor && !form.phone.trim()) {
       toast.error('Phone number with country code is required');
+      return;
+    }
+    if (form.phone.trim() && !isValidPhone(form.phone.trim())) {
+      toast.error('Please enter a valid phone number (e.g. +1234567890)');
+      return;
+    }
+    if (form.email.trim() && !isValidEmail(form.email.trim())) {
+      toast.error('Please enter a valid email address');
       return;
     }
 
