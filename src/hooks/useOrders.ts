@@ -45,10 +45,10 @@ export function useDeleteOrder() {
 
   return useMutation({
     mutationFn: async (orderId: string) => {
-      // Get order details to know the quantity for updating event tickets_sold
+      // Get order details to know the quantity and ghl_order_id
       const { data: order, error: orderFetchError } = await supabase
         .from('orders')
-        .select('quantity, event_id')
+        .select('quantity, event_id, ghl_order_id')
         .eq('id', orderId)
         .single();
 
@@ -62,13 +62,15 @@ export function useDeleteOrder() {
 
       if (attendeeError) throw attendeeError;
 
-      // Delete order line items linked to this order
-      const { error: lineItemError } = await supabase
-        .from('order_line_items')
-        .delete()
-        .eq('order_id', orderId);
+      // Delete order line items linked to this order (uses GHL order ID)
+      if (order.ghl_order_id) {
+        const { error: lineItemError } = await supabase
+          .from('order_line_items')
+          .delete()
+          .eq('order_id', order.ghl_order_id);
 
-      if (lineItemError) throw lineItemError;
+        if (lineItemError) throw lineItemError;
+      }
 
       // Delete the order
       const { error } = await supabase
