@@ -325,6 +325,7 @@ export type Database = {
           contact_id: string
           created_at: string
           event_id: string
+          ghl_order_id: string | null
           id: string
           location_id: string | null
           quantity: number
@@ -336,6 +337,7 @@ export type Database = {
           contact_id: string
           created_at?: string
           event_id: string
+          ghl_order_id?: string | null
           id?: string
           location_id?: string | null
           quantity?: number
@@ -347,6 +349,7 @@ export type Database = {
           contact_id?: string
           created_at?: string
           event_id?: string
+          ghl_order_id?: string | null
           id?: string
           location_id?: string | null
           quantity?: number

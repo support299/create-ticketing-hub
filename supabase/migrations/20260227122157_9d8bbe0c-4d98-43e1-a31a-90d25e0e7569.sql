@@ -1,0 +1,1 @@
+ALTER TABLE public.orders ADD COLUMN ghl_order_id text;

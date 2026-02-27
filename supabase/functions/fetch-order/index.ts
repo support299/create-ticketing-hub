@@ -241,6 +241,7 @@ serve(async (req) => {
         status: 'completed',
         location_id: locationId,
         bundle_option_id: firstBundleId,
+        ghl_order_id: orderId,
       })
       .select()
       .single();
