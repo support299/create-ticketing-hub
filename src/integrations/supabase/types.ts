@@ -220,6 +220,7 @@ export type Database = {
       order_line_items: {
         Row: {
           contact_email: string | null
+          contact_id: string | null
           contact_name: string | null
           contact_phone: string | null
           created_at: string
@@ -229,11 +230,13 @@ export type Database = {
           order_id: string
           price_id: string
           price_name: string | null
+          product_id: string | null
           quantity: number
           unit_price: number
         }
         Insert: {
           contact_email?: string | null
+          contact_id?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
@@ -243,11 +246,13 @@ export type Database = {
           order_id: string
           price_id: string
           price_name?: string | null
+          product_id?: string | null
           quantity?: number
           unit_price?: number
         }
         Update: {
           contact_email?: string | null
+          contact_id?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
@@ -257,6 +262,7 @@ export type Database = {
           order_id?: string
           price_id?: string
           price_name?: string | null
+          product_id?: string | null
           quantity?: number
           unit_price?: number
         }

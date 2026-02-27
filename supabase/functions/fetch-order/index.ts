@@ -88,12 +88,16 @@ serve(async (req) => {
 
     // Extract line items from items array
     const items = responseData?.items || [];
+    const contactId = responseData?.contactId || contactSnapshot?.id || null;
+
     const lineItems = items.map((item: any) => ({
       order_id: orderId,
       location_id: locationId,
       contact_name: contactName,
       contact_email: contactEmail,
       contact_phone: contactPhone,
+      contact_id: contactId,
+      product_id: item?.product?._id || null,
       price_id: item?.price?._id || item?._id,
       price_name: item?.price?.name || item?.name || null,
       quantity: item?.qty || 1,
