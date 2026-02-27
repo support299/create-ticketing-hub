@@ -66,7 +66,7 @@ serve(async (req) => {
 
     const responseData = JSON.parse(responseText);
 
-    // Save response to DB
+    // Save raw response to DB
     const { error: insertError } = await supabase
       .from('order_responses')
       .insert({
@@ -80,7 +80,40 @@ serve(async (req) => {
       throw new Error(`Failed to save order response: ${insertError.message}`);
     }
 
-    return new Response(JSON.stringify({ success: true, data: responseData }), {
+    // Extract contact info from contactSnapshot
+    const contactSnapshot = responseData?.contactSnapshot || {};
+    const contactName = [contactSnapshot.firstName, contactSnapshot.lastName].filter(Boolean).join(' ') || null;
+    const contactEmail = contactSnapshot.email || null;
+    const contactPhone = contactSnapshot.phone || null;
+
+    // Extract line items from items array
+    const items = responseData?.items || [];
+    const lineItems = items.map((item: any) => ({
+      order_id: orderId,
+      location_id: locationId,
+      contact_name: contactName,
+      contact_email: contactEmail,
+      contact_phone: contactPhone,
+      price_id: item?.price?._id || item?._id,
+      price_name: item?.price?.name || item?.name || null,
+      quantity: item?.qty || 1,
+      unit_price: item?.price?.amount || 0,
+      currency: item?.price?.currency || responseData?.currency || 'AUD',
+    }));
+
+    if (lineItems.length > 0) {
+      const { error: lineItemsError } = await supabase
+        .from('order_line_items')
+        .insert(lineItems);
+
+      if (lineItemsError) {
+        console.error('Error saving order line items:', lineItemsError);
+        throw new Error(`Failed to save order line items: ${lineItemsError.message}`);
+      }
+      console.log(`Saved ${lineItems.length} line items for order ${orderId}`);
+    }
+
+    return new Response(JSON.stringify({ success: true, data: responseData, lineItems }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
