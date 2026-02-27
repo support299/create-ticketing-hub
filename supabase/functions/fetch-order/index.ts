@@ -344,50 +344,92 @@ serve(async (req) => {
       console.error('Inventory sync failed (non-fatal):', invErr);
     }
 
-    // Fetch and store "Ticket ID" custom field for this location
+    // Fetch/store "Ticket ID" custom field, then update GHL contact
     try {
       const cfApiKey = await getLocationApiKey(supabase, locationId);
       if (cfApiKey) {
-        const cfRes = await fetch(
-          `https://services.leadconnectorhq.com/locations/${locationId}/customFields`,
-          {
-            headers: {
-              'Accept': 'application/json',
-              'Version': '2021-07-28',
-              'Authorization': `Bearer ${cfApiKey}`,
-            },
-          }
-        );
-        if (cfRes.ok) {
-          const cfData = await cfRes.json();
-          const ticketField = (cfData?.customFields || []).find(
-            (f: any) => f.name === 'Ticket ID' && f.model === 'contact'
+        // Step 1: Resolve the Ticket ID custom field for this location
+        let ticketFieldId: string | null = null;
+
+        // Check if we already have it cached
+        const { data: cachedField } = await supabase
+          .from('location_custom_fields')
+          .select('field_id')
+          .eq('location_id', locationId)
+          .eq('field_name', 'Ticket ID')
+          .maybeSingle();
+
+        if (cachedField) {
+          ticketFieldId = cachedField.field_id;
+        } else {
+          // Fetch from GHL API
+          const cfRes = await fetch(
+            `https://services.leadconnectorhq.com/locations/${locationId}/customFields`,
+            {
+              headers: {
+                'Accept': 'application/json',
+                'Version': '2021-07-28',
+                'Authorization': `Bearer ${cfApiKey}`,
+              },
+            }
           );
-          if (ticketField) {
-            const { error: cfError } = await supabase
-              .from('location_custom_fields')
-              .upsert(
-                {
-                  location_id: locationId,
-                  field_id: ticketField.id,
-                  field_name: ticketField.name,
-                },
-                { onConflict: 'location_id,field_name' }
-              );
-            if (cfError) {
-              console.error('Failed to store custom field mapping:', cfError);
-            } else {
+          if (cfRes.ok) {
+            const cfData = await cfRes.json();
+            const ticketField = (cfData?.customFields || []).find(
+              (f: any) => f.name === 'Ticket ID' && f.model === 'contact'
+            );
+            if (ticketField) {
+              ticketFieldId = ticketField.id;
+              await supabase
+                .from('location_custom_fields')
+                .upsert(
+                  { location_id: locationId, field_id: ticketField.id, field_name: ticketField.name },
+                  { onConflict: 'location_id,field_name' }
+                );
               console.log(`Stored Ticket ID custom field: ${ticketField.id} for location ${locationId}`);
+            } else {
+              console.warn('No "Ticket ID" custom field found for location', locationId);
             }
           } else {
-            console.warn('No "Ticket ID" custom field found for location', locationId);
+            console.error('Custom fields API failed:', cfRes.status);
+          }
+        }
+
+        // Step 2: Update the GHL contact with the ticket number
+        if (ticketFieldId && ghlContactId) {
+          const updateRes = await fetch(
+            `https://services.leadconnectorhq.com/contacts/${ghlContactId}`,
+            {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'Version': '2021-07-28',
+                'Authorization': `Bearer ${cfApiKey}`,
+              },
+              body: JSON.stringify({
+                customFields: [
+                  {
+                    id: ticketFieldId,
+                    key: 'ticket_id',
+                    field_value: ticketNumber,
+                  },
+                ],
+              }),
+            }
+          );
+          const updateBody = await updateRes.text();
+          if (updateRes.ok) {
+            console.log(`Updated GHL contact ${ghlContactId} with ticket_id=${ticketNumber}`);
+          } else {
+            console.error(`Failed to update GHL contact ${ghlContactId}:`, updateRes.status, updateBody);
           }
         } else {
-          console.error('Custom fields API failed:', cfRes.status);
+          console.warn('Skipping GHL contact update: ticketFieldId=', ticketFieldId, 'ghlContactId=', ghlContactId);
         }
       }
     } catch (cfErr) {
-      console.error('Custom field lookup failed (non-fatal):', cfErr);
+      console.error('Custom field / contact update failed (non-fatal):', cfErr);
     }
 
     console.log(`Created order ${order.id} with ${totalSeats} seats, total $${orderTotal} for event ${eventTitle}`);
