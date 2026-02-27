@@ -60,7 +60,9 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
       for (const row of data || []) {
         const bundleId = priceIdToBundleId[row.price_id];
         if (bundleId) {
-          map[bundleId] = (map[bundleId] || 0) + (row.quantity || 0);
+          const bundle = bundles.find(b => b.id === bundleId);
+          const bundleQty = bundle?.bundleQuantity || 1;
+          map[bundleId] = (map[bundleId] || 0) + (row.quantity || 0) * bundleQty;
         }
       }
       return map;
