@@ -217,6 +217,30 @@ export type Database = {
         }
         Relationships: []
       }
+      order_responses: {
+        Row: {
+          created_at: string
+          id: string
+          location_id: string
+          order_id: string
+          response_data: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          location_id: string
+          order_id: string
+          response_data: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          location_id?: string
+          order_id?: string
+          response_data?: Json
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           bundle_option_id: string | null
