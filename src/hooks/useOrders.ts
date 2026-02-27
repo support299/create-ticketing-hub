@@ -62,6 +62,14 @@ export function useDeleteOrder() {
 
       if (attendeeError) throw attendeeError;
 
+      // Delete order line items linked to this order
+      const { error: lineItemError } = await supabase
+        .from('order_line_items')
+        .delete()
+        .eq('order_id', orderId);
+
+      if (lineItemError) throw lineItemError;
+
       // Delete the order
       const { error } = await supabase
         .from('orders')
