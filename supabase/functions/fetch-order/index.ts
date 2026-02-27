@@ -18,8 +18,8 @@ serve(async (req) => {
 
     const payload = await req.json();
 
-    // Extract orderId from order.metadata.orderId
-    const orderId = payload?.order?.metadata?.orderId;
+    // Extract orderId from order.metadata.metadata.orderId (nested Stripe metadata)
+    const orderId = payload?.order?.metadata?.metadata?.orderId;
     // Extract locationId from location.id
     const locationId = payload?.location?.id;
 
