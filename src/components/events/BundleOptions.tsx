@@ -36,23 +36,36 @@ export function BundleOptions({ eventId, ghlProductId, locationId, eventCapacity
   const deleteBundle = useDeleteBundleOption();
   const updateBundle = useUpdateBundleOption();
 
-  // Query per-bundle sold seats
+  // Query per-bundle sold seats from order_line_items via ghl_price_id
   const { data: bundleSoldMap = {} } = useQuery({
-    queryKey: ['bundle-sold-seats', eventId],
+    queryKey: ['bundle-sold-seats', eventId, bundles],
     queryFn: async () => {
+      // Build a map of ghl_price_id -> bundle id
+      const priceIdToBundleId: Record<string, string> = {};
+      for (const b of bundles) {
+        if (b.ghlPriceId) {
+          priceIdToBundleId[b.ghlPriceId] = b.id;
+        }
+      }
+      const priceIds = Object.keys(priceIdToBundleId);
+      if (priceIds.length === 0) return {};
+
       const { data, error } = await supabase
-        .from('orders')
-        .select('bundle_option_id, quantity')
-        .eq('event_id', eventId)
-        .not('bundle_option_id', 'is', null);
+        .from('order_line_items')
+        .select('price_id, quantity')
+        .in('price_id', priceIds);
       if (error) throw error;
+
       const map: Record<string, number> = {};
       for (const row of data || []) {
-        const key = row.bundle_option_id as string;
-        map[key] = (map[key] || 0) + (row.quantity || 0);
+        const bundleId = priceIdToBundleId[row.price_id];
+        if (bundleId) {
+          map[bundleId] = (map[bundleId] || 0) + (row.quantity || 0);
+        }
       }
       return map;
     },
+    enabled: bundles.length > 0,
   });
 
   const [isAdding, setIsAdding] = useState(false);
