@@ -5,6 +5,17 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-secret',
 };
 
+async function getLocationApiKey(supabase: any, locationId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('location_api_keys')
+    .select('api_key')
+    .eq('location_id', locationId)
+    .single();
+
+  if (error || !data) return null;
+  return data.api_key;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -25,10 +36,8 @@ Deno.serve(async (req) => {
 
     const raw = await req.json();
 
-    // Accept GHL-based identifiers from inside order object
     const internalProductId = raw.order?.internalProductId || raw.internalProductId || null;
     const internalPriceId = raw.order?.internalPriceId || raw.internalPriceId || null;
-    // Legacy fallback
     const legacyEventId = raw["Event ID"] || null;
 
     const locationId = raw.location?.id || raw["Events Account ID"] || null;
@@ -48,7 +57,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 1. Resolve event: prefer internalProductId (ghl_product_id), then legacy Event ID
     let event: any = null;
 
     if (internalProductId) {
@@ -78,7 +86,6 @@ Deno.serve(async (req) => {
 
     const eventId = event.id;
 
-    // 1b. If internalPriceId provided, look up the bundle to get quantity
     let bundleMatch: any = null;
 
     if (internalPriceId) {
@@ -92,7 +99,7 @@ Deno.serve(async (req) => {
         bundleMatch = bundle;
       }
     }
-    // quantity = bundleQuantity * orderQuantity
+
     const bundleQuantity = bundleMatch ? bundleMatch.bundle_quantity : 1;
     const resolvedQuantity = bundleQuantity * quantity;
 
@@ -108,10 +115,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Use location_id from payload, fall back to event's location_id
     const resolvedLocationId = locationId || event.location_id || null;
 
-    // 2. Find or create contact
     let contactId: string;
     const { data: existingContact } = await supabase
       .from('contacts')
@@ -138,10 +143,8 @@ Deno.serve(async (req) => {
       contactId = newContact.id;
     }
 
-    // Resolve total: if bundle matched use bundle price when total is 0
     const resolvedTotal = total > 0 ? total : (bundleMatch ? bundleMatch.package_price : 0);
 
-    // 3. Create order
     const { data: order, error: orderError } = await supabase
       .from('orders')
       .insert({
@@ -160,7 +163,6 @@ Deno.serve(async (req) => {
       throw new Error('Failed to create order');
     }
 
-    // 4. Create attendee for this order
     const ticketNumber = `TKT-${order.id.slice(0, 8).toUpperCase()}`;
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${ticketNumber}`;
     
@@ -183,7 +185,6 @@ Deno.serve(async (req) => {
       throw new Error('Failed to create attendee');
     }
 
-    // 4b. Create seat assignment rows for each ticket
     const seatRows = Array.from({ length: resolvedQuantity }, (_, i) => ({
       attendee_id: attendeeResult.id,
       seat_number: i + 1,
@@ -197,7 +198,6 @@ Deno.serve(async (req) => {
       console.error('Failed to create seat assignments:', seatError);
     }
 
-    // 5. Update event tickets_sold count
     const { error: updateError } = await supabase
       .from('events')
       .update({ tickets_sold: (event.tickets_sold || 0) + resolvedQuantity })
@@ -207,14 +207,14 @@ Deno.serve(async (req) => {
       throw new Error('Failed to update event seat count');
     }
 
-    // 6. Sync inventory to LeadConnector for all bundles of this event
+    // Sync inventory to LeadConnector using per-location API key
     const updatedTicketsSold = (event.tickets_sold || 0) + resolvedQuantity;
     const remainingSeats = event.capacity - updatedTicketsSold;
 
     if (resolvedLocationId) {
       try {
-        const LEADCONNECTOR_API_KEY = Deno.env.get('LEADCONNECTOR_API_KEY');
-        if (LEADCONNECTOR_API_KEY) {
+        const apiKey = await getLocationApiKey(supabase, resolvedLocationId);
+        if (apiKey) {
           const { data: allBundles } = await supabase
             .from('bundle_options')
             .select('*')
@@ -236,7 +236,7 @@ Deno.serve(async (req) => {
                   'Content-Type': 'application/json',
                   'Accept': 'application/json',
                   'Version': '2021-07-28',
-                  'Authorization': `Bearer ${LEADCONNECTOR_API_KEY}`,
+                  'Authorization': `Bearer ${apiKey}`,
                 },
                 body: JSON.stringify({
                   altId: resolvedLocationId,

@@ -6,17 +6,25 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+async function getLocationApiKey(supabase: any, locationId: string): Promise<string> {
+  const { data, error } = await supabase
+    .from('location_api_keys')
+    .select('api_key')
+    .eq('location_id', locationId)
+    .single();
+
+  if (error || !data) {
+    throw new Error(`No API key found for location ${locationId}`);
+  }
+  return data.api_key;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const LEADCONNECTOR_API_KEY = Deno.env.get('LEADCONNECTOR_API_KEY');
-    if (!LEADCONNECTOR_API_KEY) {
-      throw new Error('LEADCONNECTOR_API_KEY is not configured');
-    }
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -30,6 +38,8 @@ serve(async (req) => {
       });
     }
 
+    const apiKey = await getLocationApiKey(supabase, locationId);
+
     const isUpdate = action === 'update' && ghlProductId;
     const url = isUpdate
       ? `https://services.leadconnectorhq.com/products/${ghlProductId}`
@@ -41,7 +51,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         'Version': '2021-07-28',
-        'Authorization': `Bearer ${LEADCONNECTOR_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         name,
@@ -61,7 +71,6 @@ serve(async (req) => {
 
     console.log('Product created in LeadConnector:', data);
 
-    // Save ghl_product_id to the event
     const returnedProductId = isUpdate ? ghlProductId : data._id;
     if (returnedProductId) {
       const { error: updateError } = await supabase
