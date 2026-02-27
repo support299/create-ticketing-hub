@@ -217,6 +217,33 @@ export type Database = {
         }
         Relationships: []
       }
+      location_custom_fields: {
+        Row: {
+          created_at: string
+          field_id: string
+          field_name: string
+          id: string
+          location_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          field_id: string
+          field_name: string
+          id?: string
+          location_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          field_id?: string
+          field_name?: string
+          id?: string
+          location_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       order_line_items: {
         Row: {
           contact_email: string | null

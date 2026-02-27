@@ -344,6 +344,52 @@ serve(async (req) => {
       console.error('Inventory sync failed (non-fatal):', invErr);
     }
 
+    // Fetch and store "Ticket ID" custom field for this location
+    try {
+      const cfApiKey = await getLocationApiKey(supabase, locationId);
+      if (cfApiKey) {
+        const cfRes = await fetch(
+          `https://services.leadconnectorhq.com/locations/${locationId}/customFields`,
+          {
+            headers: {
+              'Accept': 'application/json',
+              'Version': '2021-07-28',
+              'Authorization': `Bearer ${cfApiKey}`,
+            },
+          }
+        );
+        if (cfRes.ok) {
+          const cfData = await cfRes.json();
+          const ticketField = (cfData?.customFields || []).find(
+            (f: any) => f.name === 'Ticket ID' && f.model === 'contact'
+          );
+          if (ticketField) {
+            const { error: cfError } = await supabase
+              .from('location_custom_fields')
+              .upsert(
+                {
+                  location_id: locationId,
+                  field_id: ticketField.id,
+                  field_name: ticketField.name,
+                },
+                { onConflict: 'location_id,field_name' }
+              );
+            if (cfError) {
+              console.error('Failed to store custom field mapping:', cfError);
+            } else {
+              console.log(`Stored Ticket ID custom field: ${ticketField.id} for location ${locationId}`);
+            }
+          } else {
+            console.warn('No "Ticket ID" custom field found for location', locationId);
+          }
+        } else {
+          console.error('Custom fields API failed:', cfRes.status);
+        }
+      }
+    } catch (cfErr) {
+      console.error('Custom field lookup failed (non-fatal):', cfErr);
+    }
+
     console.log(`Created order ${order.id} with ${totalSeats} seats, total $${orderTotal} for event ${eventTitle}`);
 
     return new Response(JSON.stringify({
