@@ -69,7 +69,6 @@ export function OrdersTable({ orders }: OrdersTableProps) {
             <TableHead className="font-display">Total</TableHead>
             <TableHead className="font-display">Status</TableHead>
             <TableHead className="font-display">Date</TableHead>
-            <TableHead className="font-display">Seats</TableHead>
             <TableHead className="font-display w-[60px]"></TableHead>
           </TableRow>
         </TableHeader>
@@ -94,17 +93,6 @@ export function OrdersTable({ orders }: OrdersTableProps) {
               <TableCell className="text-muted-foreground">
                 {format(new Date(order.createdAt), 'MMM d, yyyy')}
               </TableCell>
-               <TableCell>
-                <Link to={`/orders/TKT-${order.id.substring(0, 8).toUpperCase()}${locationId ? `?id=${locationId}` : ''}`}>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-1.5 text-primary"
-                  >
-                    Assign Seats
-                  </Button>
-                </Link>
-               </TableCell>
               <TableCell>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
