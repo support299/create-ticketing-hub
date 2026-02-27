@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { Attendee, Contact } from '@/types';
 import { QrScanner } from '@/components/checkin/QrScanner';
 import { confirmContactOnCheckIn, splitName } from '@/lib/confirmContact';
+import { isValidPhone, isValidEmail } from '@/lib/validation';
 
 interface CheckInResult {
   success: boolean;
@@ -380,6 +381,14 @@ export default function CheckIn() {
                                     }
                                     if (!assignForm.isMinor && !assignForm.phone) {
                                       toast.error('Phone number with country code is required');
+                                      return;
+                                    }
+                                    if (assignForm.phone && !isValidPhone(assignForm.phone)) {
+                                      toast.error('Please enter a valid phone number (e.g. +1234567890)');
+                                      return;
+                                    }
+                                    if (assignForm.email && !isValidEmail(assignForm.email)) {
+                                      toast.error('Please enter a valid email address');
                                       return;
                                     }
                                     updateSeat.mutate(
