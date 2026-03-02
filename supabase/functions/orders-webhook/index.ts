@@ -47,7 +47,8 @@ Deno.serve(async (req) => {
     const email = raw.email;
     const phone = raw.phone || null;
     const quantity = raw.order?.quantity || 1;
-    const total = raw.order?.metadata?.amount ? raw.order.metadata.amount / 100 : (raw.order?.amount || 0);
+    const rawAmount = raw.order?.amount;
+    const total = rawAmount != null ? rawAmount : 0;
     const status = "completed";
 
     if (!email || !fullName) {
@@ -143,7 +144,7 @@ Deno.serve(async (req) => {
       contactId = newContact.id;
     }
 
-    const resolvedTotal = total > 0 ? total : (bundleMatch ? bundleMatch.package_price : 0);
+    const resolvedTotal = total;
 
     const { data: order, error: orderError } = await supabase
       .from('orders')
