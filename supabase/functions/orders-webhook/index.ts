@@ -255,6 +255,98 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Update GHL contact custom fields (Ticket ID + Ticket Quantity)
+    const ghlContactId = raw.contact_id || null;
+    if (resolvedLocationId && ghlContactId) {
+      try {
+        const cfApiKey = await getLocationApiKey(supabase, resolvedLocationId);
+        if (cfApiKey) {
+          const fieldsToResolve = ['Ticket ID', 'Ticket Quantity'];
+          const resolvedFields: Record<string, string> = {};
+
+          // Check cached fields
+          const { data: cachedFields } = await supabase
+            .from('location_custom_fields')
+            .select('field_id, field_name')
+            .eq('location_id', resolvedLocationId)
+            .in('field_name', fieldsToResolve);
+
+          if (cachedFields) {
+            for (const cf of cachedFields) {
+              resolvedFields[cf.field_name] = cf.field_id;
+            }
+          }
+
+          // Fetch missing fields from GHL API
+          const missingFields = fieldsToResolve.filter(f => !resolvedFields[f]);
+          if (missingFields.length > 0) {
+            const cfRes = await fetch(
+              `https://services.leadconnectorhq.com/locations/${resolvedLocationId}/customFields`,
+              {
+                headers: {
+                  'Accept': 'application/json',
+                  'Version': '2021-07-28',
+                  'Authorization': `Bearer ${cfApiKey}`,
+                },
+              }
+            );
+            if (cfRes.ok) {
+              const cfData = await cfRes.json();
+              const allFields = cfData?.customFields || [];
+              for (const fieldName of missingFields) {
+                const found = allFields.find((f: any) => f.name === fieldName && f.model === 'contact');
+                if (found) {
+                  resolvedFields[fieldName] = found.id;
+                  await supabase
+                    .from('location_custom_fields')
+                    .upsert(
+                      { location_id: resolvedLocationId, field_id: found.id, field_name: found.name },
+                      { onConflict: 'location_id,field_name' }
+                    );
+                }
+              }
+            } else {
+              const cfBody = await cfRes.text();
+              console.error('Custom fields API failed:', cfRes.status, cfBody);
+            }
+          }
+
+          // Update GHL contact
+          if (resolvedFields['Ticket ID'] || resolvedFields['Ticket Quantity']) {
+            const customFieldsPayload: any[] = [];
+            if (resolvedFields['Ticket ID']) {
+              customFieldsPayload.push({ id: resolvedFields['Ticket ID'], key: 'ticket_id', field_value: ticketNumber });
+            }
+            if (resolvedFields['Ticket Quantity']) {
+              customFieldsPayload.push({ id: resolvedFields['Ticket Quantity'], key: 'ticket_qty', field_value: String(resolvedQuantity) });
+            }
+
+            const updateRes = await fetch(
+              `https://services.leadconnectorhq.com/contacts/${ghlContactId}`,
+              {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                  'Version': '2021-07-28',
+                  'Authorization': `Bearer ${cfApiKey}`,
+                },
+                body: JSON.stringify({ customFields: customFieldsPayload }),
+              }
+            );
+            const updateBody = await updateRes.text();
+            if (updateRes.ok) {
+              console.log(`Updated GHL contact ${ghlContactId} with ticket_id=${ticketNumber}, ticket_qty=${resolvedQuantity}`);
+            } else {
+              console.error(`Failed to update GHL contact ${ghlContactId}:`, updateRes.status, updateBody);
+            }
+          }
+        }
+      } catch (cfErr) {
+        console.error('Custom field update failed (non-fatal):', cfErr);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
