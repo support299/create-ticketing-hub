@@ -32,7 +32,7 @@ export default function Attendees() {
   const [search, setSearch] = useState('');
   const [selectedEventId, setSelectedEventId] = useState<string>('all');
   const [activeTab, setActiveTab] = useState('tickets');
-  const attendanceTableRef = useRef<{ getFilteredRecords: () => { name: string; email: string; phone: string; eventTitle: string; mainPurchaser: string; checkedInAt: string | null; ticketNumber: string }[] }>(null);
+  const attendanceTableRef = useRef<{ getFilteredRecords: () => { name: string; email: string; phone: string; eventTitle: string; mainPurchaser: string; checkedInAt: string | null; ticketNumber: string }[] }>(null!);
 
   const handleDownloadTicketsCsv = () => {
     if (filteredAttendees.length === 0) return;

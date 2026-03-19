@@ -187,6 +187,10 @@ export const AttendanceTable = forwardRef<{ getFilteredRecords: () => Attendance
     });
   }, [records, searchQuery, eventFilter]);
 
+  useImperativeHandle(ref, () => ({
+    getFilteredRecords: () => filteredRecords,
+  }), [filteredRecords]);
+
   const handleConfirm = () => {
     if (!confirmAction) return;
     const { type, record } = confirmAction;
