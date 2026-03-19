@@ -417,4 +417,4 @@ export const AttendanceTable = forwardRef<{ getFilteredRecords: () => Attendance
       </Dialog>
     </>
   );
-}
+});
