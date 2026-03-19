@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { AttendeesTable } from '@/components/attendees/AttendeesTable';
 import { AttendanceTable } from '@/components/attendees/AttendanceTable';
@@ -6,10 +6,23 @@ import { useAttendees, useCheckInAttendee, useCheckOutAttendee } from '@/hooks/u
 import { useEvents } from '@/hooks/useEvents';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Search, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+function downloadCsv(headers: string[], rows: string[][], filename: string) {
+  const escape = (val: string) => `"${val.replace(/"/g, '""')}"`;
+  const csv = [headers.map(escape).join(','), ...rows.map(r => r.map(escape).join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function Attendees() {
   const { data: attendees = [], isLoading } = useAttendees();
