@@ -182,11 +182,21 @@ export default function Attendees() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="tickets" className="w-full">
-          <TabsList>
-            <TabsTrigger value="tickets">Ticket Management</TabsTrigger>
-            <TabsTrigger value="attendance">Attendance</TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue="tickets" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <div className="flex items-center justify-between">
+            <TabsList>
+              <TabsTrigger value="tickets">Ticket Management</TabsTrigger>
+              <TabsTrigger value="attendance">Attendance</TabsTrigger>
+            </TabsList>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={activeTab === 'tickets' ? handleDownloadTicketsCsv : handleDownloadAttendanceCsv}
+            >
+              <Download className="h-4 w-4 mr-1.5" />
+              Download CSV
+            </Button>
+          </div>
 
           <TabsContent value="tickets">
             {filteredAttendees.length === 0 ? (
@@ -205,7 +215,7 @@ export default function Attendees() {
           </TabsContent>
 
           <TabsContent value="attendance">
-            <AttendanceTable searchQuery={search} eventFilter={selectedEventId === 'all' ? 'all' : (events.find(e => e.id === selectedEventId)?.title || 'all')} />
+            <AttendanceTable ref={attendanceTableRef} searchQuery={search} eventFilter={selectedEventId === 'all' ? 'all' : (events.find(e => e.id === selectedEventId)?.title || 'all')} />
           </TabsContent>
         </Tabs>
       </div>
