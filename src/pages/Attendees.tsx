@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { AttendeesTable } from '@/components/attendees/AttendeesTable';
-import { AttendanceTable } from '@/components/attendees/AttendanceTable';
+import { AttendanceTable, type AttendanceRecord } from '@/components/attendees/AttendanceTable';
 import { useAttendees, useCheckInAttendee, useCheckOutAttendee } from '@/hooks/useAttendees';
 import { useEvents } from '@/hooks/useEvents';
 import { Input } from '@/components/ui/input';
