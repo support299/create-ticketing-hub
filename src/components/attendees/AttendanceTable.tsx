@@ -38,7 +38,7 @@ import {
 import { useCheckInSeat, useCheckOutSeat } from '@/hooks/useSeatAssignments';
 import { useCheckInAttendee, useCheckOutAttendee } from '@/hooks/useAttendees';
 
-interface AttendanceRecord {
+export interface AttendanceRecord {
   seatId: string;
   attendeeId: string;
   name: string;
