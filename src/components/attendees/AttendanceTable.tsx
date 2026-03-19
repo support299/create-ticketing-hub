@@ -171,10 +171,6 @@ export const AttendanceTable = forwardRef<{ getFilteredRecords: () => Attendance
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const [guardianRecord, setGuardianRecord] = useState<AttendanceRecord | null>(null);
 
-  useImperativeHandle(ref, () => ({
-    getFilteredRecords: () => filteredRecords,
-  }), [filteredRecords]);
-
   const filteredRecords = useMemo(() => {
     return records.filter(r => {
       if (eventFilter !== 'all' && r.eventTitle !== eventFilter) return false;
