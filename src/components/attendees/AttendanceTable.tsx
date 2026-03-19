@@ -160,7 +160,7 @@ const confirmMessages: Record<ConfirmAction['type'], { title: string; descriptio
   },
 };
 
-export function AttendanceTable({ searchQuery = '', eventFilter = 'all' }: AttendanceTableProps) {
+export const AttendanceTable = forwardRef<{ getFilteredRecords: () => AttendanceRecord[] }, AttendanceTableProps>(function AttendanceTable({ searchQuery = '', eventFilter = 'all' }, ref) {
   const { data: records = [], isLoading } = useAttendanceRecords();
   const checkInSeat = useCheckInSeat();
   const checkInAttendee = useCheckInAttendee();
