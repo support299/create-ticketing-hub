@@ -1,15 +1,28 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { AttendeesTable } from '@/components/attendees/AttendeesTable';
-import { AttendanceTable } from '@/components/attendees/AttendanceTable';
+import { AttendanceTable, type AttendanceRecord } from '@/components/attendees/AttendanceTable';
 import { useAttendees, useCheckInAttendee, useCheckOutAttendee } from '@/hooks/useAttendees';
 import { useEvents } from '@/hooks/useEvents';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Search, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+function downloadCsv(headers: string[], rows: string[][], filename: string) {
+  const escape = (val: string) => `"${val.replace(/"/g, '""')}"`;
+  const csv = [headers.map(escape).join(','), ...rows.map(r => r.map(escape).join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export default function Attendees() {
   const { data: attendees = [], isLoading } = useAttendees();
@@ -18,6 +31,39 @@ export default function Attendees() {
   const checkOutMutation = useCheckOutAttendee();
   const [search, setSearch] = useState('');
   const [selectedEventId, setSelectedEventId] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState('tickets');
+  const attendanceTableRef = useRef<{ getFilteredRecords: () => AttendanceRecord[] }>(null!);
+
+  const handleDownloadTicketsCsv = () => {
+    if (filteredAttendees.length === 0) return;
+    const headers = ['Ticket #', 'Buyer Name', 'Email', 'Event', 'Total Tickets', 'Checked In', 'Status'];
+    const rows = filteredAttendees.map(a => [
+      a.ticketNumber,
+      a.contact.name,
+      a.contact.email,
+      a.eventTitle,
+      String(a.totalTickets),
+      String(a.checkInCount),
+      a.checkInCount >= a.totalTickets ? 'Fully Checked In' : a.checkInCount > 0 ? 'Partially Checked In' : 'Not Checked In',
+    ]);
+    downloadCsv(headers, rows, 'ticket-management.csv');
+  };
+
+  const handleDownloadAttendanceCsv = () => {
+    const records = attendanceTableRef.current?.getFilteredRecords();
+    if (!records || records.length === 0) return;
+    const headers = ['Ticket #', 'Name', 'Email', 'Phone', 'Event', 'Main Purchaser', 'Status'];
+    const rows = records.map(r => [
+      r.ticketNumber,
+      r.name,
+      r.email,
+      r.phone,
+      r.eventTitle,
+      r.mainPurchaser,
+      r.checkedInAt ? 'Checked In' : 'Not Checked In',
+    ]);
+    downloadCsv(headers, rows, 'attendance.csv');
+  };
 
   const handleCheckIn = (attendeeId: string) => {
     const attendee = attendees.find(a => a.id === attendeeId);
@@ -136,11 +182,21 @@ export default function Attendees() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="tickets" className="w-full">
-          <TabsList>
-            <TabsTrigger value="tickets">Ticket Management</TabsTrigger>
-            <TabsTrigger value="attendance">Attendance</TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue="tickets" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <div className="flex items-center justify-between">
+            <TabsList>
+              <TabsTrigger value="tickets">Ticket Management</TabsTrigger>
+              <TabsTrigger value="attendance">Attendance</TabsTrigger>
+            </TabsList>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={activeTab === 'tickets' ? handleDownloadTicketsCsv : handleDownloadAttendanceCsv}
+            >
+              <Download className="h-4 w-4 mr-1.5" />
+              Download CSV
+            </Button>
+          </div>
 
           <TabsContent value="tickets">
             {filteredAttendees.length === 0 ? (
@@ -159,7 +215,7 @@ export default function Attendees() {
           </TabsContent>
 
           <TabsContent value="attendance">
-            <AttendanceTable searchQuery={search} eventFilter={selectedEventId === 'all' ? 'all' : (events.find(e => e.id === selectedEventId)?.title || 'all')} />
+            <AttendanceTable ref={attendanceTableRef} searchQuery={search} eventFilter={selectedEventId === 'all' ? 'all' : (events.find(e => e.id === selectedEventId)?.title || 'all')} />
           </TabsContent>
         </Tabs>
       </div>

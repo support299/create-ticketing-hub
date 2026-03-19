@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -38,7 +38,7 @@ import {
 import { useCheckInSeat, useCheckOutSeat } from '@/hooks/useSeatAssignments';
 import { useCheckInAttendee, useCheckOutAttendee } from '@/hooks/useAttendees';
 
-interface AttendanceRecord {
+export interface AttendanceRecord {
   seatId: string;
   attendeeId: string;
   name: string;
@@ -160,7 +160,7 @@ const confirmMessages: Record<ConfirmAction['type'], { title: string; descriptio
   },
 };
 
-export function AttendanceTable({ searchQuery = '', eventFilter = 'all' }: AttendanceTableProps) {
+export const AttendanceTable = forwardRef<{ getFilteredRecords: () => AttendanceRecord[] }, AttendanceTableProps>(function AttendanceTable({ searchQuery = '', eventFilter = 'all' }, ref) {
   const { data: records = [], isLoading } = useAttendanceRecords();
   const checkInSeat = useCheckInSeat();
   const checkInAttendee = useCheckInAttendee();
@@ -186,6 +186,10 @@ export function AttendanceTable({ searchQuery = '', eventFilter = 'all' }: Atten
       );
     });
   }, [records, searchQuery, eventFilter]);
+
+  useImperativeHandle(ref, () => ({
+    getFilteredRecords: () => filteredRecords,
+  }), [filteredRecords]);
 
   const handleConfirm = () => {
     if (!confirmAction) return;
@@ -413,4 +417,4 @@ export function AttendanceTable({ searchQuery = '', eventFilter = 'all' }: Atten
       </Dialog>
     </>
   );
-}
+});
