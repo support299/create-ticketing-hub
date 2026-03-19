@@ -31,6 +31,39 @@ export default function Attendees() {
   const checkOutMutation = useCheckOutAttendee();
   const [search, setSearch] = useState('');
   const [selectedEventId, setSelectedEventId] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState('tickets');
+  const attendanceTableRef = useRef<{ getFilteredRecords: () => { name: string; email: string; phone: string; eventTitle: string; mainPurchaser: string; checkedInAt: string | null; ticketNumber: string }[] }>(null);
+
+  const handleDownloadTicketsCsv = () => {
+    if (filteredAttendees.length === 0) return;
+    const headers = ['Ticket #', 'Buyer Name', 'Email', 'Event', 'Total Tickets', 'Checked In', 'Status'];
+    const rows = filteredAttendees.map(a => [
+      a.ticketNumber,
+      a.contact.name,
+      a.contact.email,
+      a.eventTitle,
+      String(a.totalTickets),
+      String(a.checkInCount),
+      a.checkInCount >= a.totalTickets ? 'Fully Checked In' : a.checkInCount > 0 ? 'Partially Checked In' : 'Not Checked In',
+    ]);
+    downloadCsv(headers, rows, 'ticket-management.csv');
+  };
+
+  const handleDownloadAttendanceCsv = () => {
+    const records = attendanceTableRef.current?.getFilteredRecords();
+    if (!records || records.length === 0) return;
+    const headers = ['Ticket #', 'Name', 'Email', 'Phone', 'Event', 'Main Purchaser', 'Status'];
+    const rows = records.map(r => [
+      r.ticketNumber,
+      r.name,
+      r.email,
+      r.phone,
+      r.eventTitle,
+      r.mainPurchaser,
+      r.checkedInAt ? 'Checked In' : 'Not Checked In',
+    ]);
+    downloadCsv(headers, rows, 'attendance.csv');
+  };
 
   const handleCheckIn = (attendeeId: string) => {
     const attendee = attendees.find(a => a.id === attendeeId);
