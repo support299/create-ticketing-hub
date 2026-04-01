@@ -101,6 +101,18 @@ export default function OrderSeats() {
     }));
   };
 
+  const getOtherSeatValues = (currentSeatId: string) => {
+    return seats
+      .filter(s => s.id !== currentSeatId)
+      .map(s => {
+        const edited = editingForms[s.id];
+        return {
+          email: (edited?.email ?? s.email ?? '').trim().toLowerCase(),
+          phone: (edited?.phone ?? s.phone ?? '').trim(),
+        };
+      });
+  };
+
   const handleSave = (seatId: string) => {
     const form = editingForms[seatId];
     if (!form) return;
@@ -120,6 +132,25 @@ export default function OrderSeats() {
     if (form.email.trim() && !isValidEmail(form.email.trim())) {
       toast.error('Please enter a valid email address');
       return;
+    }
+
+    // Check uniqueness of email and phone across other seats in this ticket
+    const otherSeats = getOtherSeatValues(seatId);
+
+    if (form.email.trim()) {
+      const duplicateEmail = otherSeats.some(s => s.email && s.email === form.email.trim().toLowerCase());
+      if (duplicateEmail) {
+        toast.error('This email is already used for another seat. Please use a unique email for each attendee.');
+        return;
+      }
+    }
+
+    if (form.phone.trim()) {
+      const duplicatePhone = otherSeats.some(s => s.phone && s.phone === form.phone.trim());
+      if (duplicatePhone) {
+        toast.error('This phone number is already used for another seat. Please use a unique phone number for each attendee.');
+        return;
+      }
     }
 
     setSavingId(seatId);
